@@ -41,16 +41,22 @@ def process_orders(orders):
     print("Неподходящих:", rejected_count)
 
     return {
-    "total": total_count,
-    "duplicates": duplicate_count,
-    "matched": matched_count,
-    "rejected": rejected_count,
-    "matched_orders": matched_orders,
-            }
+        "total": total_count,
+        "duplicates": duplicate_count,
+        "matched": matched_count,
+        "rejected": rejected_count,
+        "matched_orders": matched_orders,
+    }
 
 
 result = process_orders(sample_data.orders)
 
 print()
 print("Подходящие заказы в result:")
-print(result["matched_orders"])
+
+for order in result["matched_orders"]:
+    order_id = order.get("id")
+    title = order.get("title", "Без названия")
+    budget = order.get("budget", 0)
+
+    print(order_id, title, "Бюджет:", budget)
