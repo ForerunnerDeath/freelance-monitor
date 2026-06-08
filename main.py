@@ -1,8 +1,8 @@
 import filters
 import sample_data
+import db
 
 def process_orders(orders):
-    seen_ids = set()
 
     total_count = 0
     duplicate_count = 0
@@ -17,14 +17,13 @@ def process_orders(orders):
         order_id = order.get("id")
         title = order.get("title", "Без названия")
 
-        if order_id in seen_ids:
+        if db.is_order_seen(order_id):
             duplicate_count += 1
             print("Дубль заказа", order_id, title)
             continue
 
-        seen_ids.add(order_id)
-
         status = filters.check_order(order)
+        reason = status
 
         if status == "matched":
             matched_count += 1
@@ -34,9 +33,11 @@ def process_orders(orders):
             rejected_count += 1
             rejected_orders.append({
                 "order": order,
-                "reason": status,
+                "reason": reason,
             })
-            print("Не подходит", order_id, title, "Причина:", status)
+            print("Не подходит", order_id, title, "Причина:", reason)
+
+        db.save_order(order, status, reason)
 
     print()
     print("Статистика:")
@@ -80,6 +81,7 @@ def print_rejected_orders(result):
         print(order_id, title, "Причина:", reason)
 
 
+db.init_db()
 result = process_orders(sample_data.orders)
 print_matched_orders(result)
 print_rejected_orders(result)
