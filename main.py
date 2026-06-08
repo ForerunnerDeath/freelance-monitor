@@ -5,7 +5,11 @@ orders = [
     {"id": 4, "title": "Python script for CSV", "budget": None, "tags": ["python"]},
     {"id": 5, "title": "Telegram notifications", "budget": "до 8000 ₽", "tags": []},
     {"id": 1, "title": "Telegram bot", "budget": 7000, "tags": ["python", "telegram"]},
+    {"id": 6, "title": "Excel report automation", "budget": "6000 RUB", "tags": []},
+    {"id": 7, "title": "Landing page design", "budget": 15000, "tags": ["design"]},
 ]
+
+GOOD_KEYWORDS = ["python", "telegram", "parser", "excel", "api", "bot"]
 
 def parse_budget(raw_budget):
     if raw_budget is None:
@@ -32,16 +36,18 @@ def has_good_keywords(order):
     tags = order.get("tags", [])
     title = order.get("title", "").lower()
 
-    if "python" in tags or "telegram" in tags:
-        return True
-    if "python" in title or "telegram" in title or "parser" in title:
-        return True
+    for keyword in GOOD_KEYWORDS:
+        if keyword in tags:
+            return True
+
+    for keyword in GOOD_KEYWORDS:
+        if keyword in title:
+            return True
     return False
 
 def check_order(order):
     raw_budget = order.get("budget", 0)
     budget = parse_budget(raw_budget)
-    tags = order.get("tags", [])    # здесь нужно достать tags
 
     if budget < 5000: 
         return "low_budget" # если бюджет меньше 5000 - вернуть "low_budget"
