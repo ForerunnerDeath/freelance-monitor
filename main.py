@@ -9,6 +9,8 @@ def process_orders(orders):
     matched_count = 0
     rejected_count = 0
 
+    matched_orders = []
+
     for order in orders:
         total_count += 1
         order_id = order.get("id")
@@ -25,6 +27,7 @@ def process_orders(orders):
 
         if status == "matched":
             matched_count += 1
+            matched_orders.append(order)
             print("Подходящий заказ", order_id, title)
         else:
             rejected_count += 1
@@ -37,5 +40,17 @@ def process_orders(orders):
     print("Подходящих:", matched_count)
     print("Неподходящих:", rejected_count)
 
+    return {
+    "total": total_count,
+    "duplicates": duplicate_count,
+    "matched": matched_count,
+    "rejected": rejected_count,
+    "matched_orders": matched_orders,
+            }
 
-process_orders(sample_data.orders)
+
+result = process_orders(sample_data.orders)
+
+print()
+print("Подходящие заказы в result:")
+print(result["matched_orders"])
