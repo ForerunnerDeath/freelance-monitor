@@ -48,15 +48,18 @@ def process_orders(orders):
         "matched_orders": matched_orders,
     }
 
+def print_matched_orders(result):
+    print()
+    print("Подходящие заказы в result:")
+
+    for order in result["matched_orders"]:
+        order_id = order.get("id")
+        title = order.get("title", "Без названия")
+        budget = order.get("budget", 0)
+
+        print(order_id, title, "Бюджет:", budget)
 
 result = process_orders(sample_data.orders)
 
-print()
-print("Подходящие заказы в result:")
-
-for order in result["matched_orders"]:
-    order_id = order.get("id")
-    title = order.get("title", "Без названия")
-    budget = order.get("budget", 0)
-
-    print(order_id, title, "Бюджет:", budget)
+result = process_orders(sample_data.orders)
+print_matched_orders(result)
