@@ -86,7 +86,43 @@ def get_orders_count():
     connection.close()
     return row[0]
 
+
+def get_all_orders():
+    connection = sqlite3.connect(DB_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute("""
+    SELECT order_id, title, budget, status, reason, created_at
+    FROM orders
+    ORDER BY id
+    """)
+
+    rows = cursor.fetchall()
+    connection.close()
+
+    orders = []
+
+    for row in rows:
+        order = {
+            "order_id": row[0],
+            "title": row[1],
+            "budget": row[2],
+            "status": row[3],
+            "reason": row[4],
+            "created_at": row[5],
+        }
+
+        orders.append(order)
+
+    return orders
+
 if __name__ == "__main__":
     init_db()
     print("База данных инициализирована")
     print("Заказов в базе:", get_orders_count())
+    orders = get_all_orders()
+
+    print("Сохранённые заказы:")
+
+    for order in orders:
+        print(order["order_id"], order["title"], order["status"], order["reason"])
