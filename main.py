@@ -10,6 +10,7 @@ def process_orders(orders):
     rejected_count = 0
 
     matched_orders = []
+    rejected_orders = []
 
     for order in orders:
         total_count += 1
@@ -31,6 +32,10 @@ def process_orders(orders):
             print("Подходящий заказ", order_id, title)
         else:
             rejected_count += 1
+            rejected_orders.append({
+                "order": order,
+                "reason": status,
+            })
             print("Не подходит", order_id, title, "Причина:", status)
 
     print()
@@ -46,7 +51,9 @@ def process_orders(orders):
         "matched": matched_count,
         "rejected": rejected_count,
         "matched_orders": matched_orders,
+        "rejected_orders": rejected_orders,
     }
+
 
 def print_matched_orders(result):
     print()
@@ -59,7 +66,20 @@ def print_matched_orders(result):
 
         print(order_id, title, "Бюджет:", budget)
 
-result = process_orders(sample_data.orders)
+
+def print_rejected_orders(result):
+    print()
+    print("Неподходящие заказы в result:")
+
+    for rejected_item in result["rejected_orders"]:
+        order = rejected_item["order"]
+        reason = rejected_item["reason"]
+        order_id = order.get("id")
+        title = order.get("title", "Без названия")
+
+        print(order_id, title, "Причина:", reason)
+
 
 result = process_orders(sample_data.orders)
 print_matched_orders(result)
+print_rejected_orders(result)
