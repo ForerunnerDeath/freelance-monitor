@@ -26,10 +26,18 @@ def process_orders(orders):
         reason = status
 
         if status == "matched":
+            db_status = "matched"
+            reason = "matched"
+
+
             matched_count += 1
             matched_orders.append(order)
             print("Подходящий заказ", order_id, title)
         else:
+            db_status = "rejected"
+            reason = status
+
+
             rejected_count += 1
             rejected_orders.append({
                 "order": order,
@@ -37,7 +45,7 @@ def process_orders(orders):
             })
             print("Не подходит", order_id, title, "Причина:", reason)
 
-        db.save_order(order, status, reason)
+        db.save_order(order, db_status, reason)
 
     print()
     print("Статистика:")
