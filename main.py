@@ -28,6 +28,16 @@ def parse_budget(raw_budget):
 
     return 0
 
+def has_good_keywords(order):
+    tags = order.get("tags", [])
+    title = order.get("title", "").lower()
+
+    if "python" in tags or "telegram" in tags:
+        return True
+    if "python" in title or "telegram" in title or "parser" in title:
+        return True
+    return False
+
 def check_order(order):
     raw_budget = order.get("budget", 0)
     budget = parse_budget(raw_budget)
@@ -36,8 +46,8 @@ def check_order(order):
     if budget < 5000: 
         return "low_budget" # если бюджет меньше 5000 - вернуть "low_budget"
 
-    if "python" not in tags and "telegram" not in tags: 
-        return "bad_tags" # если нет ни python, ни telegram - вернуть "bad_tags"
+    if not has_good_keywords(order):
+        return "bad_keywords"
 
     return "matched" # иначе вернуть "matched"
 
