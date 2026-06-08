@@ -116,13 +116,16 @@ def get_all_orders():
 
     return orders
 
+
+def print_saved_orders():
+    orders = get_all_orders()
+    print("Сохранённые заказы:")
+    for order in orders:
+        print(order["order_id"], order["title"], order["status"], order["reason"])
+
+
 if __name__ == "__main__":
     init_db()
     print("База данных инициализирована")
     print("Заказов в базе:", get_orders_count())
-    orders = get_all_orders()
-
-    print("Сохранённые заказы:")
-
-    for order in orders:
-        print(order["order_id"], order["title"], order["status"], order["reason"])
+    print_saved_orders()
