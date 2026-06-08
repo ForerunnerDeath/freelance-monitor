@@ -74,7 +74,19 @@ def save_order(order, status, reason):
     connection.commit()
     connection.close()
 
+def get_orders_count():
+    connection = sqlite3.connect(DB_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute(
+        "SELECT COUNT(*) FROM orders"
+    )
+
+    row = cursor.fetchone()
+    connection.close()
+    return row[0]
 
 if __name__ == "__main__":
     init_db()
     print("База данных инициализирована")
+    print("Заказов в базе:", get_orders_count())
