@@ -1,23 +1,45 @@
 orders = [
     {"id": 1, "title": "Telegram bot", "budget": 7000, "tags": ["python", "telegram"]},
     {"id": 2, "title": "Fix layout", "budget": 3000, "tags": ["html", "css"]},
-    {"id": 3, "title": "Parser to Excel", "budget": 12000, "tags": ["python", "parser"]},
+    {"id": 3, "title": "Parser to Excel", "budget": "12000 RUB", "tags": ["python", "parser"]},
+    {"id": 4, "title": "Python script for CSV", "budget": None, "tags": ["python"]},
+    {"id": 5, "title": "Telegram notifications", "budget": "до 8000 ₽", "tags": []},
     {"id": 1, "title": "Telegram bot", "budget": 7000, "tags": ["python", "telegram"]},
 ]
 
+def parse_budget(raw_budget):
+    if raw_budget is None:
+        return 0
+
+    if isinstance(raw_budget, int):
+        return raw_budget
+
+    if isinstance(raw_budget, str):
+        digits = ""
+
+        for char in raw_budget:
+            if char.isdigit():
+                digits = digits + char
+
+        if digits == "":
+            return 0
+
+        return int(digits)
+
+    return 0
 
 def check_order(order):
-    budget = order.get("budget", 0)  # здесь нужно достать budget
+    raw_budget = order.get("budget", 0)
+    budget = parse_budget(raw_budget)
     tags = order.get("tags", [])    # здесь нужно достать tags
 
-    if budget < 5000 : 
+    if budget < 5000: 
         return "low_budget" # если бюджет меньше 5000 - вернуть "low_budget"
 
     if "python" not in tags and "telegram" not in tags: 
         return "bad_tags" # если нет ни python, ни telegram - вернуть "bad_tags"
 
     return "matched" # иначе вернуть "matched"
-    pass
 
 
 seen_ids = set()
