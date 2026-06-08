@@ -7,6 +7,7 @@ orders = [
     {"id": 1, "title": "Telegram bot", "budget": 7000, "tags": ["python", "telegram"]},
     {"id": 6, "title": "Excel report automation", "budget": "6000 RUB", "tags": []},
     {"id": 7, "title": "Landing page design", "budget": 15000, "tags": ["design"]},
+    {"id": 8, "title": "Small automation task", "budget": 9000, "tags": ["Python", "API"]},
 ]
 
 GOOD_KEYWORDS = ["python", "telegram", "parser", "excel", "api", "bot"]
@@ -33,7 +34,12 @@ def parse_budget(raw_budget):
     return 0
 
 def has_good_keywords(order):
-    tags = order.get("tags", [])
+    raw_tags = order.get("tags", [])
+    tags = []
+
+    for tag in raw_tags:
+        if isinstance(tag, str):
+          tags.append(tag.lower())
     title = order.get("title", "").lower()
 
     for keyword in GOOD_KEYWORDS:
