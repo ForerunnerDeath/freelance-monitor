@@ -10,44 +10,51 @@ def init_db():
     cursor = connection.cursor()
 
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS orders (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            order_id INTEGER,
-            title TEXT,
-            budget TEXT,
-            status TEXT,
-            reason TEXT,
-            created_at TEXT
-        )
-    """)
+    CREATE TABLE IF NOT EXISTS orders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        source TEXT,
+        external_id TEXT,
+        title TEXT,
+        url TEXT,
+        description TEXT,
+        budget TEXT,
+        status TEXT,
+        reason TEXT,
+        created_at TEXT,
+        UNIQUE(source, external_id)
+    )
+""")
 
     connection.commit()
     connection.close()
 
-def is_order_seen(order_id):
+def is_order_seen(source, external_id):
     connection = sqlite3.connect(DB_NAME)
     cursor = connection.cursor()
 
     cursor.execute(
-        "SELECT 1 FROM orders WHERE order_id = ? LIMIT 1",
-        (order_id,)
+        """
+        SELECT 1 FROM orders
+        WHERE source = ? AND external_id = ?
+        LIMIT 1
+        """,
+        (source, external_id)
     )
 
     row = cursor.fetchone()
-
     connection.close()
 
-    if row is None:
-        return False
-    else:
-        return True
+    return row is not None
 
 def save_order(order, status, reason):
     connection = sqlite3.connect(DB_NAME)
     cursor = connection.cursor()
 
-    order_id = order.get("id")
+    source = order.get("source", "")
+    external_id = str(order.get("external_id", ""))
     title = order.get("title", "Без названия")
+    url = order.get("url", "")
+    description = order.get("description", "")
 
     raw_budget = order.get("budget")
     if raw_budget is None:
@@ -59,16 +66,29 @@ def save_order(order, status, reason):
 
     cursor.execute(
         """
-        INSERT INTO orders (
-            order_id,
+        INSERT OR IGNORE INTO orders (
+            source,
+            external_id,
             title,
+            url,
+            description,
             budget,
             status,
             reason,
             created_at
-        ) VALUES (?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        (order_id, title, budget, status, reason, created_at)
+        (
+            source,
+            external_id,
+            title,
+            url,
+            description,
+            budget,
+            status,
+            reason,
+            created_at,
+        )
     )
 
     connection.commit()

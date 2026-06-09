@@ -50,3 +50,25 @@ def check_order(order):
         return "bad_keywords"
 
     return "matched"
+
+def check_order_v2(order):
+    raw_budget = order.get("budget", 0)
+    budget = parse_budget(raw_budget)
+
+    if budget < 5000:
+        return {
+            "status": "rejected",
+            "reason": "low_budget",
+            "budget": budget,
+        }
+    if not has_good_keywords(order):
+        return {
+            "status": "rejected",
+            "reason": "bad_keywords",
+            "budget": budget,
+        }
+    return {
+        "status": "matched",
+        "reason": "matched",
+        "budget": budget,
+    }
