@@ -1,4 +1,75 @@
-GOOD_KEYWORDS = ["python", "telegram", "parser", "excel", "api", "bot", "телеграм", "парсинг", "парсер", "скрипт", "автоматизация","csv","таблица","vps", "сервер"]
+GOOD_KEYWORDS = [
+    # Точные технологии / стек
+    "python",
+    "fastapi",
+    "django",
+    "flask",
+    "sqlalchemy",
+    "postgresql",
+    "postgres",
+    "sqlite",
+    "redis",
+    "celery",
+    "docker",
+    "linux",
+    "api",
+    "rest api",
+
+    # Парсинг / автоматизация / данные
+    "парсинг",
+    "парсер",
+    "parser",
+    "scraping",
+    "скрипт",
+    "автоматизация",
+    "автоматизировать",
+    "csv",
+    "excel",
+    "таблица",
+    "google sheets",
+    "гугл таблиц",
+    "калькулятор",
+
+    # Telegram / боты - без короткого русского "бот"
+    "telegram",
+    "телеграм",
+    "telegram-бот",
+    "телеграм-бот",
+    "чат-бот",
+    "чат бот",
+    "ии-бот",
+    "ии бот",
+    "бот для сайта",
+    "бот поддержки",
+
+    # Интеграции / no-code / backend-задачи
+    "n8n",
+    "webhook",
+    "вебхук",
+    "интеграция api",
+    "интеграция",
+    "crm",
+    "bitrix24",
+    "битрикс24",
+
+    # Языки / фреймворки, которые могут быть интересны
+    "flutter",
+    "laravel",
+    "php",
+    "javascript",
+    "typescript",
+    "node.js",
+    "nodejs",
+    "react",
+    "vue",
+
+    # Серверы / деплой
+    "vps",
+    "сервер",
+    "деплой",
+    "развернуть",
+    "настроить сервер",
+]
 BAD_KEYWORDS = ["таргетолог", "директолог", "копирайтер", "обзвон", "отзыв", "продавцы", "кассиры", "оператор чата", "вести переписку", "монтажер", "контент-креатор", "вакансию", "кандидатов", "перевод", "перефразировать"]
 
 def parse_budget(raw_budget):
@@ -30,6 +101,7 @@ def has_good_keywords(order):
         if isinstance(tag, str):
             tags.append(tag.lower())
     title = order.get("title", "").lower()
+    description = order.get("description", "").lower()
 
     for keyword in GOOD_KEYWORDS:
         if keyword in tags:
@@ -38,6 +110,11 @@ def has_good_keywords(order):
     for keyword in GOOD_KEYWORDS:
         if keyword in title:
             return True
+        
+    for keyword in GOOD_KEYWORDS:
+        if keyword in description:
+            return True
+        
     return False
 
 def has_bad_keywords(order):
@@ -64,6 +141,7 @@ def find_good_keyword(order):
         if isinstance(tag, str):
             tags.append(tag.lower())
     title = order.get("title", "").lower()
+    description = order.get("description", "").lower()
 
     for keyword in GOOD_KEYWORDS:
         if keyword in tags:
@@ -72,12 +150,32 @@ def find_good_keyword(order):
     for keyword in GOOD_KEYWORDS:
         if keyword in title:
             return keyword
+        
+    for keyword in GOOD_KEYWORDS:
+        if keyword in description:
+            return keyword
+        
     return None    
+
+def is_vacancy(order):
+    project_type = order.get("project_type", "").lower()
+
+    if "вакансия" in project_type:
+        return True
+
+    return False
 
 
 def check_order_v2(order):
     raw_budget = order.get("budget", 0)
     budget = parse_budget(raw_budget)
+
+    if is_vacancy(order):
+        return {
+            "status": "rejected",
+            "reason": "vacancy",
+            "budget": budget,
+        }
 
     bad_keyword = find_bad_keyword(order)
     if bad_keyword is not None:
@@ -88,7 +186,7 @@ def check_order_v2(order):
             "negative_keyword": bad_keyword,
         }
 
-    if budget > 0 and budget < 5000:
+    if budget > 0 and budget < 3000:
         return {
             "status": "rejected",
             "reason": "low_budget",

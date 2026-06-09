@@ -29,16 +29,34 @@ def fetch_orders():
                     continue
                 seen_ids.add(external_id)
 
-                text = link.text.strip()
+                card = link.parent.parent.parent
+                card_text = card.get_text("\n", strip=True)
+                lines = card_text.split("\n")
+                title_from_card = lines[0] if len(lines) > 0 else ""
+                budget_from_card = lines[1] if len(lines) > 1 else ""
+
+                if len(lines) > 2 and lines[2] == "руб":
+                    budget_from_card = budget_from_card + " " + lines[2]
+                    description_from_card = lines[3] if len(lines) > 3 else ""
+                else:
+                    description_from_card = lines[2] if len(lines) > 2 else ""
+
+                project_type = ""
+                if "Откликнуться" in lines:
+                    button_index = lines.index("Откликнуться")
+                    project_type = lines[button_index + 1] if (button_index + 1) < len(lines) else ""
+
+
                 full_url = "https://www.fl.ru" + href
                 order = {
                     "source": "fl_ru",
                     "external_id": external_id,
-                    "title": text,
+                    "title": title_from_card,
                     "url": full_url,
-                    "description": "",
-                    "budget": "",
+                    "description": description_from_card,
+                    "budget": budget_from_card,
                     "tags": [],
+                    "project_type": project_type,
                 }
                 orders.append(order)
     return orders
@@ -50,4 +68,10 @@ if __name__ == "__main__":
     print("Найдено заказов:", len(orders))
 
     for order in orders[:5]:
-        print(order["external_id"], order["title"], order["url"])
+        print("-----")
+        print("ID:", order["external_id"])
+        print("Title:", order["title"])
+        print("Budget:", order["budget"])
+        print("Description:", order["description"])
+        print("URL:", order["url"])
+        print("Type:", order["project_type"])

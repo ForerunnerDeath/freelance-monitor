@@ -79,8 +79,12 @@ def print_matched_orders(result):
         external_id = str(order.get("external_id", ""))
         title = order.get("title", "Без названия")
         budget = order.get("budget", 0)
+        description = order.get("description", "")
 
-        print(source, external_id, title, "Бюджет:", budget)
+        print("-----")
+        print(source, external_id, title)
+        print("Бюджет:", budget)
+        print("Описание:", description)
 
 
 def print_rejected_orders(result):
