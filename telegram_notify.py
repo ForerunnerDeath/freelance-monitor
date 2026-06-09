@@ -20,13 +20,14 @@ def is_telegram_configured():
     return True
 
 
-def format_order_message(order):
+def format_order_message(order, check_result):
     source = order.get("source", "unknown")
     external_id = order.get("external_id", "")
     title = order.get("title", "Без названия")
     budget = order.get("budget", "Не указан")
     url = order.get("url", "")
     tags = order.get("tags", [])
+    matched_keyword = check_result.get("matched_keyword")
 
     if tags:
         tags_text = ", ".join(tags)
@@ -40,6 +41,7 @@ def format_order_message(order):
         f"Название: {title}\n"
         f"Бюджет: {budget}\n"
         f"Теги: {tags_text}\n"
+        f"Ключ: {matched_keyword}\n"
     )
 
     if url:
@@ -69,6 +71,6 @@ def send_telegram_message(text):
     return True
 
 
-def notify_about_order(order):
-    message = format_order_message(order)
+def notify_about_order(order, check_result):
+    message = format_order_message(order, check_result)
     return send_telegram_message(message)

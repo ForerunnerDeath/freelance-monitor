@@ -1,5 +1,5 @@
 import filters
-import sample_data
+from sources import fl_ru
 import db
 import telegram_notify
 
@@ -27,14 +27,17 @@ def process_orders(orders):
         check_result = filters.check_order_v2(order)
         status = check_result.get("status")
         reason = check_result.get("reason")
+        matched_keyword = check_result.get("matched_keyword")
+        negative_keyword = check_result.get("negative_keyword")
+
 
         if status == "matched":
             db_status = "matched"
 
             matched_count += 1
             matched_orders.append(order)
-            print("Подходящий заказ", source, external_id, title)
-            telegram_notify.notify_about_order(order)
+            print("Подходящий заказ", source, external_id, title, "Ключ: ", matched_keyword)
+            telegram_notify.notify_about_order(order, check_result)
         else:
             db_status = "rejected"
 
@@ -43,7 +46,10 @@ def process_orders(orders):
                 "order": order,
                 "reason": reason,
             })
-            print("Не подходит", source, external_id, title, "Причина:", reason)
+            if negative_keyword is not None:
+                print("Не подходит", source, external_id, title, "Причина:", reason, "Минус-слово: ", negative_keyword)
+            else:
+                print("Не подходит", source, external_id, title, "Причина:", reason)
 
         db.save_order(order, db_status, reason)
 
@@ -90,9 +96,17 @@ def print_rejected_orders(result):
 
         print(source, external_id, title, "Причина:", reason)
 
+def get_orders():
+    return fl_ru.fetch_orders()
 
-db.init_db()
-orders = sample_data.get_sample_orders()
-result = process_orders(orders)
-print_matched_orders(result)
-print_rejected_orders(result)
+
+def main():
+    db.init_db()
+    orders = get_orders()
+    result = process_orders(orders)
+    print_matched_orders(result)
+    print_rejected_orders(result)
+
+
+if __name__ == "__main__":
+    main()
