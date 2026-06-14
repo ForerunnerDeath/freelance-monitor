@@ -210,7 +210,18 @@ def retry_unsent_telegram_orders():
     }
 
 def get_orders(verbose):
-    return fl_ru.fetch_orders(pages=config.FL_RU_PAGES, verbose=verbose)
+    all_orders = []
+    source_modules = [fl_ru]
+    for source_module in source_modules:
+        try:
+            source_orders = source_module.fetch_orders(pages=config.FL_RU_PAGES, verbose=verbose)
+        except Exception as error:
+            log_error(f"Ошибка получения заказов из {source_module.__name__}: {error}")
+            continue
+        if verbose:
+            print("Источник", source_module.__name__, "вернул", len(source_orders), "заказов")
+        all_orders.extend(source_orders)
+    return all_orders
 
 
 def run_once(verbose=True):
