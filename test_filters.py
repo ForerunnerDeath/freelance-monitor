@@ -185,3 +185,15 @@ def test_check_order_v2_bad_telegram_order():
     assert result["status"] == "rejected"
     assert result["reason"] == "negative_keyword"
     assert result.get("negative_keyword")
+
+def test_check_order_v2_bad_inst_order():
+    order = {
+        "title": "Аккаунты в инсте привязать к фейсбуку, дать доступ к сообщениям менеджеру",
+        "description": "чат-бот, сообщения, доступы",
+        "budget": "4000",
+    }
+
+    result = check_order_v2(order)
+    assert result["status"] == "rejected"
+    assert result["reason"] == "negative_keyword"
+    assert result.get("negative_keyword")
