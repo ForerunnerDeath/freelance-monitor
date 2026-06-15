@@ -1,5 +1,6 @@
 import filters
 from sources import fl_ru
+from sources import profi_ru
 import db
 import telegram_notify
 import time
@@ -20,15 +21,30 @@ def process_orders(orders, verbose=True):
     matched_orders = []
     rejected_orders = []
     risky_orders = []
+    source_stats = {}
 
     for order in orders:
         total_count += 1
         source = order.get("source", "")
+
+        if source not in source_stats:
+            source_stats[source] = {
+                "total": 0,
+                "duplicates": 0,
+                "matched": 0,
+                "risky": 0,
+                "rejected": 0,
+                "telegram_sent": 0,
+                "telegram_failed": 0,
+            }
+        source_stats[source]["total"] += 1
+
         external_id = str(order.get("external_id", ""))
         title = order.get("title", "Без названия")
 
         if db.is_order_seen(source, external_id):
             duplicate_count += 1
+            source_stats[source]["duplicates"] += 1
             if verbose:
                 print("Дубль заказа", source, external_id, title)
             continue
@@ -42,11 +58,13 @@ def process_orders(orders, verbose=True):
 
         if status == "matched":
             matched_count += 1
+            source_stats[source]["matched"] += 1
             matched_orders.append(order)
             if verbose:
                 print("Подходящий заказ", source, external_id, title, "Ключ: ", matched_keyword)
         elif status == "risky":
             risky_count += 1
+            source_stats[source]["risky"] += 1
             risky_orders.append({
                 "order": order,
                 "risky_keyword": risky_keyword,
@@ -55,6 +73,7 @@ def process_orders(orders, verbose=True):
                 print("Рискованный заказ", source, external_id, title, "Ключ:", risky_keyword)
         else:
             rejected_count += 1
+            source_stats[source]["rejected"] += 1
             rejected_orders.append({
                 "order": order,
                 "reason": reason,
@@ -72,8 +91,10 @@ def process_orders(orders, verbose=True):
             if telegram_sent:
                 db.mark_order_sent_to_telegram(source, external_id)
                 telegram_sent_count += 1
+                source_stats[source]["telegram_sent"] += 1
             else:
                 telegram_failed_count += 1
+                source_stats[source]["telegram_failed"] += 1
 
     return {
         "total": total_count,
@@ -86,7 +107,24 @@ def process_orders(orders, verbose=True):
         "risky_orders": risky_orders,
         "telegram_sent": telegram_sent_count,
         "telegram_failed": telegram_failed_count,
+        "source_stats": source_stats,
     }
+
+def print_source_stats(result):
+    source_stats = result.get("source_stats", {})
+    print()
+    print("Статистика по источникам:")
+
+    for source, stats in source_stats.items():
+        print("-----")
+        print("Источник:", source)
+        print("Всего:", stats.get("total", 0))
+        print("Дублей:", stats.get("duplicates", 0))
+        print("Подходящих:", stats.get("matched", 0))
+        print("Рискованных:", stats.get("risky", 0))
+        print("Неподходящих:", stats.get("rejected", 0))
+        print("Отправлено в Telegram:", stats.get("telegram_sent", 0))
+        print("Ошибок Telegram:", stats.get("telegram_failed", 0))        
 
 def print_stats(result):
     total_count = result.get("total", "")
@@ -116,6 +154,18 @@ def log_stats(result):
     telegram_failed_count = result.get("telegram_failed")
 
     log_info(f"Статистика: всего {total_count}, дублей {duplicate_count}, подходящих {matched_count}, неподходящих {rejected_count}, рискованных {risky_count}, отправлено в TG {telegram_sent_count}, ошибок отправки в TG {telegram_failed_count}")    
+
+def log_source_stats(result):
+    source_stats = result.get("source_stats", {})
+    for source, stats in source_stats.items():
+        total_count = stats.get("total", 0)
+        duplicates = stats.get("duplicates", 0)
+        matched = stats.get("matched", 0)
+        risky = stats.get("risky", 0)
+        rejected = stats.get("rejected", 0)
+        telegram_sent = stats.get("telegram_sent", 0)
+        telegram_failed = stats.get("telegram_failed", 0)
+        log_info(f"Источники: {source}, всего {total_count}, дублей {duplicates}, подходящих {matched}, неподходящих {rejected}, рискованных {risky}, отправлено в TG {telegram_sent}, ошибок отправки в TG {telegram_failed}")
 
 def print_matched_orders(result):
     print()
@@ -211,10 +261,18 @@ def retry_unsent_telegram_orders():
 
 def get_orders(verbose):
     all_orders = []
-    source_modules = [fl_ru]
+    source_modules = []
+    if config.ENABLE_FL_RU:
+        source_modules.append(fl_ru)
+    if config.ENABLE_PROFI_RU:
+        source_modules.append(profi_ru)
     for source_module in source_modules:
         try:
-            source_orders = source_module.fetch_orders(pages=config.FL_RU_PAGES, verbose=verbose)
+            if source_module == fl_ru:
+                pages = config.FL_RU_PAGES
+            if source_module == profi_ru:
+                pages = config.PROFI_RU_PAGES
+            source_orders = source_module.fetch_orders(pages=pages, verbose=verbose)
         except Exception as error:
             log_error(f"Ошибка получения заказов из {source_module.__name__}: {error}")
             continue
@@ -238,11 +296,13 @@ def run_once(verbose=True):
     result = process_orders(orders, verbose=verbose)
     if verbose:
         print_stats(result)
+        print_source_stats(result)
         print_matched_orders(result)
         print_risky_orders(result)
         print_rejected_orders(result)
     else:
         log_stats(result)
+        log_source_stats(result)
     log_info("Проверка заказов завершена")
 
 def log_info(message):

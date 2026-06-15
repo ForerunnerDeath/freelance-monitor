@@ -197,3 +197,27 @@ def test_check_order_v2_bad_inst_order():
     assert result["status"] == "rejected"
     assert result["reason"] == "negative_keyword"
     assert result.get("negative_keyword")
+
+def test_check_order_v2_bad_game_order():
+    order = {
+        "title": "Разработчик игр на Юнити",
+        "description": "Создать мультиплеер на базе выделенного сервера. Игра для мобильных устройств. Ищем разработчика в маленькую инди-команду.",
+        "budget": "до 150 000 ₽",
+    }
+
+    result = check_order_v2(order)
+    assert result["status"] == "rejected"
+    assert result["reason"] == "negative_keyword"
+    assert result.get("negative_keyword")
+
+def test_check_order_v2_bad_disk_order():
+    order = {
+        "title": "Системный администратор, или инжинер по СХД",
+        "description": "Необходимо заменить два жёстких диска и выполнить диагностику NAS-сервера Synology DS416",
+        "budget": "до 10000 ₽",
+    }
+
+    result = check_order_v2(order)
+    assert result["status"] == "rejected"
+    assert result["reason"] == "negative_keyword"
+    assert result.get("negative_keyword")
