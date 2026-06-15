@@ -1,5 +1,10 @@
+from playwright.sync_api import sync_playwright
 SOURCE_NAME = "profi_ru"
 BASE_ORDER_URL = "https://profi.ru/backoffice/n.php?o="
+PROFI_URL = "https://profi.ru/backoffice/n.php"
+USER_DATA_DIR = "playwright_profiles/profi"
+PLAYWRIGHT_WAIT_MS = 5000
+
 
 
 def build_order_url(order_id):
@@ -67,56 +72,67 @@ def parse_graphql_response(response_data):
 
 
 def fetch_orders(pages=1, verbose=True):
-    """
-    Заглушка на время перехода к Playwright.
+    found_orders = []
+    def handle_response(response):
+        if "/graphql" not in response.url:
+            return
+        if verbose:
+            if response.status != 200:
+                print("GraphQL status:", response.status)
+                return
+        try:
+            data = response.json()
+        except Exception as error:
+            if verbose:
+                print("Не удалось прочитать GraphQL JSON:", error)
+            return
+        data_block = data.get("data") or {}
+        if "boSearchBoardItems" not in data_block:
+            return
+        orders = parse_graphql_response(data)
+        found_orders.extend(orders)
+        if verbose:
+            print("Найдено заказов в этом ответе:", len(orders))
+            print("Всего найдено заказов:", len(found_orders))
+        
+    with sync_playwright() as p:
+        browser_context = p.chromium.launch_persistent_context(
+        user_data_dir = USER_DATA_DIR,
+        headless = False,
+        viewport={"width": 1400, "height": 900}
+        )
+        page = browser_context.new_page()
+        page.on("response", handle_response)
+        page.goto(PROFI_URL, wait_until = "domcontentloaded")
+        page.wait_for_timeout(PLAYWRIGHT_WAIT_MS)
+        browser_context.close()
 
-    Profi.ru не удалось стабильно получить через обычный requests/cURL:
-    сервер возвращает 401 not authenticated вне браузерного контекста.
-
-    Следующий шаг:
-    - Playwright открывает Profi.ru как браузер;
-    - перехватывает GraphQL-ответ;
-    - передаёт JSON в parse_graphql_response().
-    """
-    if verbose:
-        print("Profi.ru: источник пока не подключён, нужен Playwright-транспорт")
-
-    return []
+    return found_orders
 
 
 if __name__ == "__main__":
-    test_items = [
-        {
-            "id": "90518402",
-            "type": "SNIPPET",
-            "title": "Программист инстаграм",
-            "description": "Восстановление аккаунта",
-            "price": {
-                "prefix": "до",
-                "value": "15 000 ₽",
-                "suffix": "",
-            },
-        },
-        {
-            "id": "STORIES",
-            "type": "STORIES",
-        },
-        {
-            "id": "DIVIDER",
-            "type": "DIVIDER",
-            "title": "Вы посмотрели все новые заказы",
-        },
-    ]
-
-    response_data = {
-        "data": {
-            "boSearchBoardItems": {
-                "items": test_items
-            }
-        }
-    }
-
-    orders = parse_graphql_response(response_data)
-
+    from filters import check_order_v2
+    orders = fetch_orders(verbose=True)
     print("orders count:", len(orders))
-    print(orders)
+    stats = {
+        "matched": 0,
+        "risky": 0,
+        "rejected": 0,
+    }
+    for index, order in enumerate(orders):
+        result = check_order_v2(order)
+        status = result["status"]
+        stats[status] += 1
+
+        if index < 5:
+            print("-----")
+            print(order["external_id"])
+            print(order["title"])
+            print(order["budget"])
+            print("status:", status)
+            print("reason:", result.get("reason"))
+            print(order["url"])
+            print("matched_keyword:", result.get("matched_keyword"))
+            print("negative_keyword:", result.get("negative_keyword"))
+            print("risky_keyword:", result.get("risky_keyword"))
+    print ("stats:", stats)

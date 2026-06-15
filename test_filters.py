@@ -173,3 +173,15 @@ def test_check_order_v2_risky_wordpress():
     assert result["status"] == "risky"
     assert result["reason"] == "risky_keyword"
     assert result.get("risky_keyword")
+
+def test_check_order_v2_bad_telegram_order():
+    order = {
+        "title": "Внедрение искусственного интеллекта",
+        "description": "сбор пользовательских баз, парс Telegram-пользователей, массовые рассылки",
+        "budget": "до 100 000 ₽"
+    }
+    
+    result = check_order_v2(order)
+    assert result["status"] == "rejected"
+    assert result["reason"] == "negative_keyword"
+    assert result.get("negative_keyword")
