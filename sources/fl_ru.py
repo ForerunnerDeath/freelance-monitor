@@ -1,10 +1,12 @@
 import requests
-import config
 from bs4 import BeautifulSoup
+
+import config
+
 
 def parse_project_card(card):
     link = card.find("a")
-    if link is None: 
+    if link is None:
         return None
     href = link.get("href")
     if href is None:
@@ -23,8 +25,6 @@ def parse_project_card(card):
     if "Откликнуться" in lines:
         button_index = lines.index("Откликнуться")
         project_type = lines[button_index + 1] if (button_index + 1) < len(lines) else ""
-
-
     return {
         "title": title_from_card,
         "url": url,
@@ -32,7 +32,8 @@ def parse_project_card(card):
         "description": description_from_card,
         "project_type": project_type,
         "lines": lines,
-    }
+        }
+
 
 def build_projects_url(page):
     if page == 1:
@@ -40,12 +41,13 @@ def build_projects_url(page):
     else:
         return f"https://www.fl.ru/projects/page-{page}/"
 
-def fetch_page(page, verbose = True):
+
+def fetch_page(page, verbose=True):
     url = build_projects_url(page)
     headers = {
         "User-Agent": config.FL_RU_USER_AGENT
     }
-    try: 
+    try:
         response = requests.get(url, headers=headers, timeout=config.FL_RU_TIMEOUT)
     except requests.exceptions.RequestException as error:
         print("Сетевая ошибка:", error)
@@ -117,10 +119,10 @@ def fetch_page(page, verbose = True):
     return orders
 
 
-def fetch_orders(pages=1, verbose = True):
+def fetch_orders(pages=1, verbose=True):
     all_orders = []
 
-    for page in range (1, pages + 1):
+    for page in range(1, pages + 1):
         page_orders = fetch_page(page, verbose=verbose)
         if verbose:
             print("Страница", page, ":", "получено", len(page_orders), "заказов")

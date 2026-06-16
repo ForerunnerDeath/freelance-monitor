@@ -1,4 +1,5 @@
-from filters import parse_budget, check_order_v2
+from filters import check_order_v2, parse_budget
+
 
 def test_parse_budget_simple():
     assert parse_budget("15000") == 15000
@@ -7,25 +8,28 @@ def test_parse_budget_simple():
     assert parse_budget("") is None
     assert parse_budget("договорная") is None
 
+
 def test_parse_budget_extra_cases():
     assert parse_budget(None) is None
     assert parse_budget("25000") == 25000
     assert parse_budget("от 20 000 до 30 000 руб.") == 20000
     assert parse_budget("Бюджет: 7 500 ₽") == 7500
 
+
 def test_check_order_v2_matched():
     order = {
-    "title": "Сделать парсер сайта",
-    "description": "",
-    "budget": "15000",
-    "project_type": "project",
-    "tags": [],
-    }  
+        "title": "Сделать парсер сайта",
+        "description": "",
+        "budget": "15000",
+        "project_type": "project",
+        "tags": [],
+        }
     result = check_order_v2(order)
     assert result["status"] == "matched"
     assert result["reason"] == "matched"
     assert result.get("matched_keyword")
     assert result["budget"] == 15000
+
 
 def test_check_order_v2_risky():
     order = {
@@ -35,11 +39,11 @@ def test_check_order_v2_risky():
         "project_type": "project",
         "tags": [],
         }
-    
     result = check_order_v2(order)
     assert result["status"] == "risky"
     assert result["reason"] == "risky_keyword"
     assert result.get("risky_keyword")
+
 
 def test_check_order_v2_rejected_bad_keyword():
     order = {
@@ -49,12 +53,11 @@ def test_check_order_v2_rejected_bad_keyword():
         "project_type": "project",
         "tags": [],
     }
-
     result = check_order_v2(order)
-
     assert result["status"] == "rejected"
     assert result["reason"] == "negative_keyword"
     assert result.get("negative_keyword")
+
 
 def test_check_order_v2_rejected_low_budget():
     order = {
@@ -64,12 +67,11 @@ def test_check_order_v2_rejected_low_budget():
         "project_type": "project",
         "tags": [],
     }
-
     result = check_order_v2(order)
-
     assert result["status"] == "rejected"
     assert result["reason"] == "low_budget"
-    assert result["budget"] == 500        
+    assert result["budget"] == 500
+
 
 def test_check_order_v2_rejected_vacancy():
     order = {
@@ -80,9 +82,9 @@ def test_check_order_v2_rejected_vacancy():
         "tags": [],
     }
     result = check_order_v2(order)
-
     assert result["status"] == "rejected"
     assert result["reason"] == "vacancy"
+
 
 def test_check_order_v2_rejected_no_good_keywords():
     order = {
@@ -93,9 +95,9 @@ def test_check_order_v2_rejected_no_good_keywords():
         "tags": [],
     }
     result = check_order_v2(order)
-
     assert result["status"] == "rejected"
     assert result["reason"] == "bad_keywords"
+
 
 def test_check_order_v2_bad_keyword_has_priority_over_good_keyword():
     order = {
@@ -105,12 +107,11 @@ def test_check_order_v2_bad_keyword_has_priority_over_good_keyword():
         "project_type": "project",
         "tags": [],
     }
-
     result = check_order_v2(order)
-
     assert result["status"] == "rejected"
     assert result["reason"] == "negative_keyword"
     assert result.get("negative_keyword")
+
 
 def test_check_order_v2_matched_without_budget():
     order = {
@@ -120,13 +121,12 @@ def test_check_order_v2_matched_without_budget():
         "project_type": "project",
         "tags": [],
     }
-
     result = check_order_v2(order)
-
     assert result["status"] == "matched"
     assert result["reason"] == "matched"
     assert result["budget"] is None
     assert result.get("matched_keyword")
+
 
 def test_check_order_v2_risky_without_budget():
     order = {
@@ -136,13 +136,12 @@ def test_check_order_v2_risky_without_budget():
         "project_type": "project",
         "tags": [],
     }
-
     result = check_order_v2(order)
-
     assert result["status"] == "risky"
     assert result["reason"] == "risky_keyword"
     assert result["budget"] is None
     assert result.get("risky_keyword")
+
 
 def test_check_order_v2_matched_by_tag():
     order = {
@@ -152,12 +151,11 @@ def test_check_order_v2_matched_by_tag():
         "project_type": "project",
         "tags": ["Python"],
     }
-
     result = check_order_v2(order)
-
     assert result["status"] == "matched"
     assert result["reason"] == "matched"
     assert result.get("matched_keyword")
+
 
 def test_check_order_v2_risky_wordpress():
     order = {
@@ -167,12 +165,11 @@ def test_check_order_v2_risky_wordpress():
         "project_type": "project",
         "tags": [],
     }
-
     result = check_order_v2(order)
-
     assert result["status"] == "risky"
     assert result["reason"] == "risky_keyword"
     assert result.get("risky_keyword")
+
 
 def test_check_order_v2_bad_telegram_order():
     order = {
@@ -180,11 +177,11 @@ def test_check_order_v2_bad_telegram_order():
         "description": "сбор пользовательских баз, парс Telegram-пользователей, массовые рассылки",
         "budget": "до 100 000 ₽"
     }
-    
     result = check_order_v2(order)
     assert result["status"] == "rejected"
     assert result["reason"] == "negative_keyword"
     assert result.get("negative_keyword")
+
 
 def test_check_order_v2_bad_inst_order():
     order = {
@@ -192,11 +189,11 @@ def test_check_order_v2_bad_inst_order():
         "description": "чат-бот, сообщения, доступы",
         "budget": "4000",
     }
-
     result = check_order_v2(order)
     assert result["status"] == "rejected"
     assert result["reason"] == "negative_keyword"
     assert result.get("negative_keyword")
+
 
 def test_check_order_v2_bad_game_order():
     order = {
@@ -204,11 +201,11 @@ def test_check_order_v2_bad_game_order():
         "description": "Создать мультиплеер на базе выделенного сервера. Игра для мобильных устройств. Ищем разработчика в маленькую инди-команду.",
         "budget": "до 150 000 ₽",
     }
-
     result = check_order_v2(order)
     assert result["status"] == "rejected"
     assert result["reason"] == "negative_keyword"
     assert result.get("negative_keyword")
+
 
 def test_check_order_v2_bad_disk_order():
     order = {
@@ -216,7 +213,6 @@ def test_check_order_v2_bad_disk_order():
         "description": "Необходимо заменить два жёстких диска и выполнить диагностику NAS-сервера Synology DS416",
         "budget": "до 10000 ₽",
     }
-
     result = check_order_v2(order)
     assert result["status"] == "rejected"
     assert result["reason"] == "negative_keyword"

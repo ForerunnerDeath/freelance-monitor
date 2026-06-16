@@ -1,20 +1,20 @@
 import sqlite3
-from datetime import datetime
 import sys
-
+from datetime import datetime
 
 DB_NAME = "freelance_monitor.db"
 
-def add_column_if_not_exists(cursor, table_name, column_name, column_definition):
+
+def add_column_if_not_exists(cursor, table_name,
+                             column_name, column_definition):
     cursor.execute(f"PRAGMA table_info({table_name})")
-    columns=cursor.fetchall()
-    existing_columns= []
+    columns = cursor.fetchall()
+    existing_columns = []
     for column in columns:
         existing_columns.append(column[1])
 
     if column_name not in existing_columns:
         cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_definition}")
-
 
 
 def init_db():
@@ -36,13 +36,15 @@ def init_db():
         UNIQUE(source, external_id)
     )
 """)
-    
     add_column_if_not_exists(cursor, "orders", "project_type", "TEXT")
     add_column_if_not_exists(cursor, "orders", "parsed_budget", "INTEGER")
     add_column_if_not_exists(cursor, "orders", "matched_keyword", "TEXT")
     add_column_if_not_exists(cursor, "orders", "negative_keyword", "TEXT")
-    add_column_if_not_exists(cursor, "orders", "sent_to_telegram", "INTEGER DEFAULT 0")
+    add_column_if_not_exists(cursor, "orders", "sent_to_telegram",
+                             "INTEGER DEFAULT 0")
     add_column_if_not_exists(cursor, "orders", "risky_keyword", "TEXT")
+    add_column_if_not_exists(cursor, "orders", "contacted",
+                             "INTEGER DEFAULT 0")
 
     cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_orders_status_sent_to_telegram
@@ -70,6 +72,7 @@ def is_order_seen(source, external_id):
     connection.close()
 
     return row is not None
+
 
 def save_order(order, check_result, sent_to_telegram=0):
     connection = sqlite3.connect(DB_NAME)
@@ -139,6 +142,7 @@ def save_order(order, check_result, sent_to_telegram=0):
     connection.commit()
     connection.close()
 
+
 def get_orders_count():
     connection = sqlite3.connect(DB_NAME)
     cursor = connection.cursor()
@@ -150,6 +154,7 @@ def get_orders_count():
     row = cursor.fetchone()
     connection.close()
     return row[0]
+
 
 def get_status_stats():
     connection = sqlite3.connect(DB_NAME)
@@ -174,11 +179,13 @@ def get_status_stats():
         })
     return stats
 
+
 def print_status_stats():
     stats = get_status_stats()
     print("Статистика по статусам:")
     for item in stats:
         print(item["status"], item["total"])
+
 
 def get_rejected_reason_stats():
     connection = sqlite3.connect(DB_NAME)
@@ -204,24 +211,26 @@ def get_rejected_reason_stats():
         })
     return stats
 
+
 def print_rejected_reason_stats():
     stats = get_rejected_reason_stats()
     print("Причины отказов:")
     for item in stats:
         print(item["reason"], item["total"])
 
+
 def get_budget_quality_stats():
     connection = sqlite3.connect(DB_NAME)
     cursor = connection.cursor()
 
     cursor.execute("""
-                   SELECT status, 
-                   COUNT(*) AS total, 
-                   SUM(CASE WHEN parsed_budget IS NULL THEN 1 ELSE 0 END) AS unknown_budget, 
+                   SELECT status,
+                   COUNT(*) AS total,
+                   SUM(CASE WHEN parsed_budget IS NULL THEN 1 ELSE 0 END) AS unknown_budget,
                    SUM(CASE WHEN parsed_budget IS NOT NULL THEN 1 ELSE 0 END) AS known_budget
                    FROM orders
                    GROUP BY status
-                   ORDER BY status; 
+                   ORDER BY status;
                    """)
     rows = cursor.fetchall()
     connection.close()
@@ -237,11 +246,13 @@ def get_budget_quality_stats():
         })
     return stats
 
+
 def print_budget_quality_stats():
     stats = get_budget_quality_stats()
     print("Качество бюджетов:")
     for item in stats:
         print(item["status"], "total:", item["total"], "unknown:", item["unknown_budget"], "known:", item["known_budget"])
+
 
 def get_budget_stats():
     connection = sqlite3.connect(DB_NAME)
@@ -272,29 +283,38 @@ def get_budget_stats():
         })
     return stats
 
+
 def print_budget_stats():
-    stats=get_budget_stats()
+    stats = get_budget_stats()
     print("Бюджеты по статусам:")
     for item in stats:
         print(item["status"], "with_budget:", item["with_budget"], "минимальный бюджет:", item["min_budget"], "максимальный бюджет:", item["max_budget"], "средний бюджет:", item["avg_budget"])
+
 
 def print_telegram_stats():
     orders = get_unsent_telegram_orders()
     print("Telegram:")
     print("Неотправленных matched/risky:", len(orders))
 
-def get_all_orders(limit=20):
+
+def get_all_orders(status=None, limit=20):
     connection = sqlite3.connect(DB_NAME)
     cursor = connection.cursor()
-
-    cursor.execute("""
-    SELECT id, source, external_id, title, budget, status, reason, project_type, parsed_budget, matched_keyword, negative_keyword, risky_keyword, sent_to_telegram, created_at
-    FROM orders
-    ORDER BY id DESC
-    LIMIT ?
-    """,
-    (limit,)
-    )
+    if status is None:
+        cursor.execute("""
+        SELECT id, source, external_id, title, url, budget, status, reason, project_type, parsed_budget, matched_keyword, negative_keyword, risky_keyword, sent_to_telegram, contacted, created_at
+        FROM orders
+        ORDER BY id DESC
+        LIMIT ?
+        """, (limit,))
+    else:
+        cursor.execute("""
+        SELECT id, source, external_id, title, url, budget, status, reason, project_type, parsed_budget, matched_keyword, negative_keyword, risky_keyword, sent_to_telegram, contacted, created_at
+        FROM orders
+        WHERE status = ?
+        ORDER BY id DESC
+        LIMIT ?
+        """, (status, limit))
 
     rows = cursor.fetchall()
     connection.close()
@@ -307,16 +327,18 @@ def get_all_orders(limit=20):
             "source": row[1],
             "external_id": row[2],
             "title": row[3],
-            "budget": row[4],
-            "status": row[5],
-            "reason": row[6],
-            "project_type": row[7],
-            "parsed_budget": row[8],
-            "matched_keyword": row[9],
-            "negative_keyword": row[10],
-            "risky_keyword": row[11],
-            "sent_to_telegram": row[12],
-            "created_at": row[13],
+            "url": row[4],
+            "budget": row[5],
+            "status": row[6],
+            "reason": row[7],
+            "project_type": row[8],
+            "parsed_budget": row[9],
+            "matched_keyword": row[10],
+            "negative_keyword": row[11],
+            "risky_keyword": row[12],
+            "sent_to_telegram": row[13],
+            "contacted": row[14],
+            "created_at": row[15],
         }
 
         orders.append(order)
@@ -324,8 +346,43 @@ def get_all_orders(limit=20):
     return orders
 
 
+def get_order_by_source_and_external_id(source, external_id):
+    connection = sqlite3.connect(DB_NAME)
+    cursor = connection.cursor()
+    cursor.execute("""
+                SELECT id, source, external_id, title, url, budget, status, reason, project_type, parsed_budget, matched_keyword, negative_keyword, risky_keyword, sent_to_telegram, contacted, created_at
+                FROM orders
+                WHERE source = ? AND external_id = ?
+                LIMIT 1
+                """, (source, external_id))
+    row = cursor.fetchone()
+    connection.close()
+    if row is None:
+        return None
+    order = {
+                "order_id": row[0],
+                "source": row[1],
+                "external_id": row[2],
+                "title": row[3],
+                "url": row[4],
+                "budget": row[5],
+                "status": row[6],
+                "reason": row[7],
+                "project_type": row[8],
+                "parsed_budget": row[9],
+                "matched_keyword": row[10],
+                "negative_keyword": row[11],
+                "risky_keyword": row[12],
+                "sent_to_telegram": row[13],
+                "contacted": row[14],
+                "created_at": row[15],
+                }
+
+    return order
+
+
 def print_saved_orders(limit=20):
-    orders = get_all_orders(limit)
+    orders = get_all_orders(limit=limit)
     print("Сохранённые заказы:")
     for order in orders:
         print(
@@ -343,6 +400,7 @@ def print_saved_orders(limit=20):
             "risky_keyword", order["risky_keyword"],
         )
 
+
 def mark_order_sent_to_telegram(source, external_id):
     connection = sqlite3.connect(DB_NAME)
     cursor = connection.cursor()
@@ -351,8 +409,7 @@ def mark_order_sent_to_telegram(source, external_id):
         UPDATE orders
         SET sent_to_telegram = 1
         WHERE source = ? AND external_id = ?
-        """,
-        (source, external_id)
+        """, (source, external_id)
     )
     updated_rows = cursor.rowcount
 
@@ -360,6 +417,7 @@ def mark_order_sent_to_telegram(source, external_id):
     connection.close()
 
     return updated_rows > 0
+
 
 def get_unsent_telegram_orders():
     connection = sqlite3.connect(DB_NAME)
@@ -393,6 +451,7 @@ def get_unsent_telegram_orders():
         orders.append(order)
     return orders
 
+
 def print_unsent_telegram_orders():
     orders = get_unsent_telegram_orders()
     print("Неотправленных в Telegram:", len(orders))
@@ -409,6 +468,28 @@ def print_unsent_telegram_orders():
             "match:", order["matched_keyword"],
             "risky:", order["risky_keyword"],
         )
+
+
+def update_order_contacted(source, external_id, contacted):
+    connection = sqlite3.connect(DB_NAME)
+    cursor = connection.cursor()
+
+    if contacted:
+        contacted_value = 1
+    else:
+        contacted_value = 0
+
+    cursor.execute("""
+        UPDATE orders
+        SET contacted = ?
+        WHERE source = ? AND external_id = ?
+        """, (contacted_value, source, external_id))
+    updated_rows = cursor.rowcount
+    connection.commit()
+    connection.close()
+
+    return updated_rows > 0
+
 
 if __name__ == "__main__":
     init_db()
@@ -436,8 +517,3 @@ if __name__ == "__main__":
         print("Заказов в базе:", get_orders_count())
         print_saved_orders(limit=20)
         print_unsent_telegram_orders()
-    
-
-    
-    
-

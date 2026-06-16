@@ -1,10 +1,10 @@
 from playwright.sync_api import sync_playwright
+
 SOURCE_NAME = "profi_ru"
 BASE_ORDER_URL = "https://profi.ru/backoffice/n.php?o="
 PROFI_URL = "https://profi.ru/backoffice/n.php"
 USER_DATA_DIR = "playwright_profiles/profi"
 PLAYWRIGHT_WAIT_MS = 5000
-
 
 
 def build_order_url(order_id):
@@ -74,6 +74,7 @@ def parse_graphql_response(response_data):
 def fetch_orders(pages=1, verbose=True):
     found_orders = []
     seen_ids = set()
+
     def handle_response(response):
         if "/graphql" not in response.url:
             return
@@ -101,16 +102,15 @@ def fetch_orders(pages=1, verbose=True):
         if verbose:
             print("Новых заказов в этом ответе:", new_orders_count)
             print("Всего найдено заказов:", len(found_orders))
-        
     with sync_playwright() as p:
         browser_context = p.chromium.launch_persistent_context(
-        user_data_dir = USER_DATA_DIR,
-        headless = False,
-        viewport={"width": 1400, "height": 900}
+            user_data_dir=USER_DATA_DIR,
+            headless=False,
+            viewport={"width": 1400, "height": 900}
         )
         page = browser_context.new_page()
         page.on("response", handle_response)
-        page.goto(PROFI_URL, wait_until = "domcontentloaded")
+        page.goto(PROFI_URL, wait_until="domcontentloaded")
         page.wait_for_timeout(PLAYWRIGHT_WAIT_MS)
         for scroll_number in range(pages - 1):
             if verbose:
@@ -176,4 +176,4 @@ if __name__ == "__main__":
             print("risky_keyword:", result.get("risky_keyword"))
             print(order["url"])
             print(order["description"][:300])
-    print ("stats:", stats)
+    print("stats:", stats)

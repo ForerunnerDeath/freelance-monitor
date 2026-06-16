@@ -1,5 +1,6 @@
-import config
 import re
+
+import config
 
 GOOD_KEYWORDS = [
     # Python / backend
@@ -347,6 +348,7 @@ RISKY_KEYWORDS = [
     "презентация + речь",
 ]
 
+
 def parse_budget(raw_budget):
     if raw_budget is None:
         return None
@@ -372,6 +374,7 @@ def parse_budget(raw_budget):
 
     return None
 
+
 def find_bad_keyword(order):
     title = order.get("title", "").lower()
     description = order.get("description", "").lower()
@@ -382,6 +385,7 @@ def find_bad_keyword(order):
             return keyword
 
     return None
+
 
 def find_good_keyword(order):
     raw_tags = order.get("tags", [])
@@ -398,7 +402,8 @@ def find_good_keyword(order):
         keyword_lower = keyword.lower()
         if keyword_lower in text:
             return keyword
-    return None    
+    return None
+
 
 def find_risky_keyword(order):
     raw_tags = order.get("tags", [])
@@ -417,6 +422,7 @@ def find_risky_keyword(order):
             return keyword
     return None
 
+
 def is_vacancy(order):
     project_type = order.get("project_type", "").lower()
 
@@ -424,6 +430,7 @@ def is_vacancy(order):
         return True
 
     return False
+
 
 def check_order_v2(order):
     raw_budget = order.get("budget", 0)

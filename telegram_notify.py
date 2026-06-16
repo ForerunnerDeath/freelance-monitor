@@ -1,8 +1,8 @@
 import os
-import requests
 import time
-from dotenv import load_dotenv
 
+import requests
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -45,12 +45,10 @@ def format_order_message(order, check_result):
         title_line = "🔥 Новый подходящий заказ"
         keyword_label = "Ключ"
         keyword = matched_keyword
-    
     elif status == "risky":
         title_line = "⚠️ Рискованный заказ"
         keyword_label = "Риск-слово"
         keyword = risky_keyword
-
     else:
         title_line = "Новый заказ"
         keyword_label = "Причина"
@@ -86,8 +84,8 @@ def send_telegram_message(text):
 
     for attempt in range(1, MAX_TELEGRAM_RETRIES + 1):
         try:
-            response = requests.post(url, json=payload, timeout=10)   
-            break            
+            response = requests.post(url, json=payload, timeout=10)
+            break
         except requests.exceptions.RequestException as error:
             if attempt < MAX_TELEGRAM_RETRIES:
                 print("Сетевая ошибка Telegram, попытка", attempt, "из", MAX_TELEGRAM_RETRIES, error)

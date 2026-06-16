@@ -1,12 +1,13 @@
-import filters
-from sources import fl_ru
-from sources import profi_ru
-import db
-import telegram_notify
-import time
 import datetime
 import sys
+import time
+
 import config
+import db
+import filters
+import telegram_notify
+from sources import fl_ru, profi_ru
+
 
 def process_orders(orders, verbose=True):
 
@@ -110,6 +111,7 @@ def process_orders(orders, verbose=True):
         "source_stats": source_stats,
     }
 
+
 def print_source_stats(result):
     source_stats = result.get("source_stats", {})
     print()
@@ -124,7 +126,8 @@ def print_source_stats(result):
         print("Рискованных:", stats.get("risky", 0))
         print("Неподходящих:", stats.get("rejected", 0))
         print("Отправлено в Telegram:", stats.get("telegram_sent", 0))
-        print("Ошибок Telegram:", stats.get("telegram_failed", 0))        
+        print("Ошибок Telegram:", stats.get("telegram_failed", 0))
+
 
 def print_stats(result):
     total_count = result.get("total", "")
@@ -144,6 +147,7 @@ def print_stats(result):
     print("Отправлено в Telegram:", telegram_sent_count)
     print("Ошибка отправления в Telegram:", telegram_failed_count)
 
+
 def log_stats(result):
     total_count = result.get("total", "")
     duplicate_count = result.get("duplicates", "")
@@ -153,7 +157,8 @@ def log_stats(result):
     telegram_sent_count = result.get("telegram_sent")
     telegram_failed_count = result.get("telegram_failed")
 
-    log_info(f"Статистика: всего {total_count}, дублей {duplicate_count}, подходящих {matched_count}, неподходящих {rejected_count}, рискованных {risky_count}, отправлено в TG {telegram_sent_count}, ошибок отправки в TG {telegram_failed_count}")    
+    log_info(f"Статистика: всего {total_count}, дублей {duplicate_count}, подходящих {matched_count}, неподходящих {rejected_count}, рискованных {risky_count}, отправлено в TG {telegram_sent_count}, ошибок отправки в TG {telegram_failed_count}")
+
 
 def log_source_stats(result):
     source_stats = result.get("source_stats", {})
@@ -166,6 +171,7 @@ def log_source_stats(result):
         telegram_sent = stats.get("telegram_sent", 0)
         telegram_failed = stats.get("telegram_failed", 0)
         log_info(f"Источники: {source}, всего {total_count}, дублей {duplicates}, подходящих {matched}, неподходящих {rejected}, рискованных {risky}, отправлено в TG {telegram_sent}, ошибок отправки в TG {telegram_failed}")
+
 
 def print_matched_orders(result):
     print()
@@ -197,6 +203,7 @@ def print_rejected_orders(result):
 
         print(source, external_id, title, "Причина:", reason)
 
+
 def print_risky_orders(result):
     print()
     print("Рискованные заказы в result:")
@@ -216,6 +223,7 @@ def print_risky_orders(result):
         print("Бюджет:", budget)
         print("Риск-слово:", risky_keyword)
         print("Описание:", description)
+
 
 def retry_unsent_telegram_orders():
     unsent_orders = db.get_unsent_telegram_orders()
@@ -258,6 +266,7 @@ def retry_unsent_telegram_orders():
         "sent": sent_count,
         "failed": failed_count,
     }
+
 
 def get_orders(verbose):
     all_orders = []
@@ -305,13 +314,16 @@ def run_once(verbose=True):
         log_source_stats(result)
     log_info("Проверка заказов завершена")
 
+
 def log_info(message):
     current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{current_time}] INFO: {message}")
 
+
 def log_error(message):
     current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{current_time}] ERROR: {message}")
+
 
 def main():
     if len(sys.argv) > 1:
@@ -326,12 +338,11 @@ def main():
             return
     else:
         interval = config.DEFAULT_INTERVAL
-        
     if mode == "watch" and interval < config.MIN_INTERVAL:
         log_error(f"Интервал не может быть меньше {config.MIN_INTERVAL} секунд")
         return
 
-    if mode == "once":    
+    if mode == "once":
         try:
             run_once(verbose=True)
         except Exception as error:
@@ -341,12 +352,12 @@ def main():
             try:
                 run_once(verbose=False)
             except Exception as error:
-                log_error(str(error))     
+                log_error(str(error))
             log_info(f"Пауза {interval} секунд...")
             time.sleep(interval)
     else:
         log_error("Неизвестный режим. Используй: once или watch")
-        
+
+
 if __name__ == "__main__":
     main()
-    
