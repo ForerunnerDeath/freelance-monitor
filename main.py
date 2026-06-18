@@ -1,12 +1,12 @@
-import datetime
 import sys
 import time
 from database import SessionLocal
 
 import config
-from sources import fl_ru, profi_ru
 from services.order_service import process_orders, retry_unsent_telegram_orders
 from cli_output import print_source_stats, print_stats, print_matched_orders, print_rejected_orders, print_risky_orders
+from logger import log_info, log_error
+from services.source_service import get_orders
 
 
 def log_stats(result):
@@ -34,29 +34,6 @@ def log_source_stats(result):
         log_info(f"Источники: {source}, всего {total_count}, дублей {duplicates}, подходящих {matched}, неподходящих {rejected}, рискованных {risky}, отправлено в TG {telegram_sent}, ошибок отправки в TG {telegram_failed}")
 
 
-def get_orders(verbose):
-    all_orders = []
-    source_modules = []
-    if config.ENABLE_FL_RU:
-        source_modules.append(fl_ru)
-    if config.ENABLE_PROFI_RU:
-        source_modules.append(profi_ru)
-    for source_module in source_modules:
-        try:
-            if source_module == fl_ru:
-                pages = config.FL_RU_PAGES
-            if source_module == profi_ru:
-                pages = config.PROFI_RU_PAGES
-            source_orders = source_module.fetch_orders(pages=pages, verbose=verbose)
-        except Exception as error:
-            log_error(f"Ошибка получения заказов из {source_module.__name__}: {error}")
-            continue
-        if verbose:
-            print("Источник", source_module.__name__, "вернул", len(source_orders), "заказов")
-        all_orders.extend(source_orders)
-    return all_orders
-
-
 def run_once(verbose=True):
     log_info("Старт проверки заказов")
     with SessionLocal() as session:
@@ -79,16 +56,6 @@ def run_once(verbose=True):
         log_stats(result)
         log_source_stats(result)
     log_info("Проверка заказов завершена")
-
-
-def log_info(message):
-    current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[{current_time}] INFO: {message}")
-
-
-def log_error(message):
-    current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[{current_time}] ERROR: {message}")
 
 
 def main():
