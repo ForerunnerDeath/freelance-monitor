@@ -4,10 +4,8 @@ import time
 from database import SessionLocal
 
 import config
-import db_sqlalchemy
-import telegram_notify
 from sources import fl_ru, profi_ru
-from services.order_service import process_orders
+from services.order_service import process_orders, retry_unsent_telegram_orders
 
 
 def print_source_stats(result):
@@ -121,48 +119,6 @@ def print_risky_orders(result):
         print("Бюджет:", budget)
         print("Риск-слово:", risky_keyword)
         print("Описание:", description)
-
-
-def retry_unsent_telegram_orders(session):
-    unsent_orders = db_sqlalchemy.get_unsent_telegram_orders_as_dicts(session)
-    sent_count = 0
-    failed_count = 0
-    for saved_order in unsent_orders:
-        order = {
-            "source": saved_order.get("source", ""),
-            "external_id": saved_order.get("external_id", ""),
-            "title": saved_order.get("title", ""),
-            "url": saved_order.get("url", ""),
-            "description": saved_order.get("description", ""),
-            "budget": saved_order.get("budget", ""),
-            "tags": [],
-        }
-        check_result = {
-            "status": saved_order.get("status", ""),
-            "reason": saved_order.get("reason", ""),
-            "budget": saved_order.get("parsed_budget", ""),
-            "matched_keyword": saved_order.get("matched_keyword", ""),
-            "negative_keyword": saved_order.get("negative_keyword", ""),
-            "risky_keyword": saved_order.get("risky_keyword", ""),
-        }
-        telegram_sent = telegram_notify.notify_about_order(order, check_result)
-        if telegram_sent:
-            marked = db_sqlalchemy.mark_order_sent_to_telegram(
-                session,
-                saved_order.get("source", ""),
-                saved_order.get("external_id", ""),
-            )
-            if marked:
-                sent_count += 1
-            else:
-                failed_count += 1
-        else:
-            failed_count += 1
-    return {
-        "total": len(unsent_orders),
-        "sent": sent_count,
-        "failed": failed_count,
-    }
 
 
 def get_orders(verbose):
