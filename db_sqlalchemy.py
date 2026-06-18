@@ -1,5 +1,5 @@
 from models import Order
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
 
 
@@ -140,3 +140,124 @@ def get_unsent_telegram_orders_as_dicts(session):
 def is_order_seen(session, source, external_id):
     db_order = get_order_by_source_and_external_id(session, source, external_id)
     return db_order is not None
+
+
+def get_orders_count(session):
+    statement = select(func.count()).select_from(Order)
+    result = session.execute(statement)
+    total = result.scalar()
+    return total
+
+
+def get_status_stats(session):
+    statement = select(Order.status, func.count()).group_by(Order.status)
+    result = session.execute(statement)
+    rows = result.all()
+    stats = []
+    for status, total in rows:
+        stats.append({
+            "status": status,
+            "total": total,
+        })
+    return stats
+
+
+def get_rejected_reason_stats(session):
+    statement = select(Order.reason, func.count())
+    statement = statement.where(Order.status == "rejected")
+    statement = statement.group_by(Order.reason)
+    result = session.execute(statement)
+    rows = result.all()
+    stats = []
+    for reason, total in rows:
+        stats.append({
+            "reason": reason,
+            "total": total,
+        })
+    return stats
+
+
+def get_budget_quality_stats(session):
+    stats = []
+    statuses = ["matched", "risky", "rejected"]
+
+    for status in statuses:
+        statement_total = (
+            select(func.count()).select_from(Order).where(Order.status == status)
+        )
+        result_total = session.execute(statement_total)
+        total = result_total.scalar()
+
+        statement_known_budget = (
+            select(func.count()).select_from(Order).where(Order.status == status, Order.parsed_budget.is_not(None))
+        )
+        result_known_budget = session.execute(statement_known_budget)
+        known_budget = result_known_budget.scalar()
+
+        statement_unknown_budget = (
+            select(func.count()).select_from(Order).where(Order.status == status, Order.parsed_budget.is_(None))
+        )
+        result_unknown_budget = session.execute(statement_unknown_budget)
+        unknown_budget = result_unknown_budget.scalar()
+
+        stats.append({
+            "status": status,
+            "total": total,
+            "unknown_budget": unknown_budget,
+            "known_budget": known_budget,
+        })
+
+    return stats
+
+
+def get_budget_stats(session):
+    stats = []
+    statuses = ["matched", "risky", "rejected"]
+    for status in statuses:
+        statement_with_budget = (
+            select(func.count()).select_from(Order)
+            .where(
+                Order.parsed_budget.is_not(None),
+                Order.status == status,
+            )
+        )
+        result_with_budget = session.execute(statement_with_budget)
+        with_budget = result_with_budget.scalar()
+
+        statement = (
+            select(
+                func.min(Order.parsed_budget),
+                func.max(Order.parsed_budget),
+                func.avg(Order.parsed_budget),
+            )
+            .select_from(Order)
+            .where(
+                Order.parsed_budget.is_not(None),
+                Order.status == status,
+            )
+        )
+        result = session.execute(statement)
+        row = result.first()
+
+        min_budget, max_budget, avg_budget = row
+        avg_budget = float(avg_budget) if avg_budget is not None else None
+
+        stats.append({
+            "status": status,
+            "with_budget": with_budget,
+            "min_budget": min_budget,
+            "max_budget": max_budget,
+            "avg_budget": avg_budget,
+        })
+
+    return stats
+
+
+def get_unsent_telegram_count(session):
+    statement = select(func.count()).select_from(Order).where(
+        Order.status.in_(["matched", "risky"]),
+        Order.sent_to_telegram.is_(False),
+    )
+    result = session.execute(statement)
+    unsent_count = result.scalar()
+    return unsent_count
