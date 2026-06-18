@@ -52,12 +52,13 @@ def update_order_contacted(session, source, external_id, contacted):
     return True
 
 
-def get_all_orders(session, status=None, limit=20):
+def get_all_orders(session, status=None, limit=20, offset=0):
     statement = select(Order)
     if status is not None:
         statement = statement.where(Order.status == status)
     statement = statement.order_by(Order.id.desc())
     statement = statement.limit(limit)
+    statement = statement.offset(offset)
     result = session.execute(statement)
     orders = result.scalars().all()
     return orders
@@ -87,8 +88,8 @@ def order_to_dict(order):
     }
 
 
-def get_all_orders_as_dicts(session, status=None, limit=20):
-    orders = get_all_orders(session, status=status, limit=limit)
+def get_all_orders_as_dicts(session, status=None, limit=20, offset=0):
+    orders = get_all_orders(session, status=status, limit=limit, offset=offset)
     result = []
     for order in orders:
         result.append(order_to_dict(order))

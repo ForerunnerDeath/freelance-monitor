@@ -19,13 +19,14 @@ def health():
 
 @app.get("/orders/", response_model=OrdersListResponse)
 def orders(limit: int = Query(20, ge=1, le=100),
-           status: Literal["matched", "risky", "rejected"] | None = None, session=Depends(get_db_session)):
-    orders = db_sqlalchemy.get_all_orders_as_dicts(session, status=status, limit=limit)
+           status: Literal["matched", "risky", "rejected"] | None = None, session=Depends(get_db_session), offset: int = Query(0, ge=0, le=10000)):
+    orders = db_sqlalchemy.get_all_orders_as_dicts(session, status=status, limit=limit, offset=offset)
     response = {
         "items": orders,
         "count": len(orders),
         "limit": limit,
         "status": status,
+        "offset": offset,
     }
     return response
 

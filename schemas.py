@@ -25,6 +25,7 @@ class OrdersListResponse(BaseModel):
     count: int
     limit: int
     status: Literal["matched", "risky", "rejected"] | None
+    offset: int
 
 
 class StatusStat(BaseModel):
