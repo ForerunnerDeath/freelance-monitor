@@ -4,17 +4,9 @@ from fastapi import FastAPI, HTTPException, Query, Depends
 
 import db_sqlalchemy
 from schemas import OrderResponse, OrdersListResponse, StatsResponse, OrderUpdateRequest
-from database import SessionLocal
+from dependencies import get_db_session
 
 app = FastAPI()
-
-
-def get_db_session():
-    session = SessionLocal()
-    try:
-        yield session
-    finally:
-        session.close()
 
 
 @app.get("/health")
