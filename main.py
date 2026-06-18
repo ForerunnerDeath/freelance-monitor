@@ -1,8 +1,10 @@
 import datetime
 import sys
 import time
+from database import SessionLocal
 
 import config
+import db_sqlalchemy
 import db
 import filters
 import telegram_notify
@@ -93,6 +95,113 @@ def process_orders(orders, verbose=True):
                 db.mark_order_sent_to_telegram(source, external_id)
                 telegram_sent_count += 1
                 source_stats[source]["telegram_sent"] += 1
+            else:
+                telegram_failed_count += 1
+                source_stats[source]["telegram_failed"] += 1
+
+    return {
+        "total": total_count,
+        "duplicates": duplicate_count,
+        "matched": matched_count,
+        "rejected": rejected_count,
+        "matched_orders": matched_orders,
+        "rejected_orders": rejected_orders,
+        "risky": risky_count,
+        "risky_orders": risky_orders,
+        "telegram_sent": telegram_sent_count,
+        "telegram_failed": telegram_failed_count,
+        "source_stats": source_stats,
+    }
+
+
+def process_orders_pg(orders, session, verbose=True):
+
+    total_count = 0
+    duplicate_count = 0
+    matched_count = 0
+    rejected_count = 0
+    risky_count = 0
+    telegram_sent_count = 0
+    telegram_failed_count = 0
+
+    matched_orders = []
+    rejected_orders = []
+    risky_orders = []
+    source_stats = {}
+
+    for order in orders:
+        total_count += 1
+        source = order.get("source", "")
+
+        if source not in source_stats:
+            source_stats[source] = {
+                "total": 0,
+                "duplicates": 0,
+                "matched": 0,
+                "risky": 0,
+                "rejected": 0,
+                "telegram_sent": 0,
+                "telegram_failed": 0,
+            }
+        source_stats[source]["total"] += 1
+
+        external_id = str(order.get("external_id", ""))
+        title = order.get("title", "Без названия")
+
+        if db_sqlalchemy.is_order_seen(session, source, external_id):
+            duplicate_count += 1
+            source_stats[source]["duplicates"] += 1
+            if verbose:
+                print("Дубль заказа", source, external_id, title)
+            continue
+
+        check_result = filters.check_order_v2(order)
+        status = check_result.get("status")
+        reason = check_result.get("reason")
+        matched_keyword = check_result.get("matched_keyword")
+        negative_keyword = check_result.get("negative_keyword")
+        risky_keyword = check_result.get("risky_keyword")
+
+        if status == "matched":
+            matched_count += 1
+            source_stats[source]["matched"] += 1
+            matched_orders.append(order)
+            if verbose:
+                print("Подходящий заказ", source, external_id, title, "Ключ: ", matched_keyword)
+        elif status == "risky":
+            risky_count += 1
+            source_stats[source]["risky"] += 1
+            risky_orders.append({
+                "order": order,
+                "risky_keyword": risky_keyword,
+            })
+            if verbose:
+                print("Рискованный заказ", source, external_id, title, "Ключ:", risky_keyword)
+        else:
+            rejected_count += 1
+            source_stats[source]["rejected"] += 1
+            rejected_orders.append({
+                "order": order,
+                "reason": reason,
+            })
+            if negative_keyword is not None:
+                if verbose:
+                    print("Не подходит", source, external_id, title, "Причина:", reason, "Минус-слово: ", negative_keyword)
+            else:
+                if verbose:
+                    print("Не подходит", source, external_id, title, "Причина:", reason)
+        db_sqlalchemy.save_order(session, order, check_result, sent_to_telegram=False)
+
+        if status in ("matched", "risky"):
+            telegram_sent = telegram_notify.notify_about_order(order, check_result)
+            if telegram_sent:
+                marked = db_sqlalchemy.mark_order_sent_to_telegram(session, source, external_id)
+                if marked:
+                    telegram_sent_count += 1
+                    source_stats[source]["telegram_sent"] += 1
+                else:
+                    telegram_failed_count += 1
+                    source_stats[source]["telegram_failed"] += 1
             else:
                 telegram_failed_count += 1
                 source_stats[source]["telegram_failed"] += 1
@@ -268,6 +377,48 @@ def retry_unsent_telegram_orders():
     }
 
 
+def retry_unsent_telegram_orders_pg(session):
+    unsent_orders = db_sqlalchemy.get_unsent_telegram_orders_as_dicts(session)
+    sent_count = 0
+    failed_count = 0
+    for saved_order in unsent_orders:
+        order = {
+            "source": saved_order.get("source", ""),
+            "external_id": saved_order.get("external_id", ""),
+            "title": saved_order.get("title", ""),
+            "url": saved_order.get("url", ""),
+            "description": saved_order.get("description", ""),
+            "budget": saved_order.get("budget", ""),
+            "tags": [],
+        }
+        check_result = {
+            "status": saved_order.get("status", ""),
+            "reason": saved_order.get("reason", ""),
+            "budget": saved_order.get("parsed_budget", ""),
+            "matched_keyword": saved_order.get("matched_keyword", ""),
+            "negative_keyword": saved_order.get("negative_keyword", ""),
+            "risky_keyword": saved_order.get("risky_keyword", ""),
+        }
+        telegram_sent = telegram_notify.notify_about_order(order, check_result)
+        if telegram_sent:
+            marked = db_sqlalchemy.mark_order_sent_to_telegram(
+                session,
+                saved_order.get("source", ""),
+                saved_order.get("external_id", ""),
+            )
+            if marked:
+                sent_count += 1
+            else:
+                failed_count += 1
+        else:
+            failed_count += 1
+    return {
+        "total": len(unsent_orders),
+        "sent": sent_count,
+        "failed": failed_count,
+    }
+
+
 def get_orders(verbose):
     all_orders = []
     source_modules = []
@@ -315,6 +466,30 @@ def run_once(verbose=True):
     log_info("Проверка заказов завершена")
 
 
+def run_pg_once(verbose=True):
+    log_info("Старт PostgreSQL проверки заказов")
+    with SessionLocal() as session:
+        retry_result = retry_unsent_telegram_orders_pg(session)
+        retry_total = retry_result["total"]
+        retry_sent = retry_result["sent"]
+        retry_failed = retry_result["failed"]
+        if retry_total > 0:
+            log_info(f"Повторная отправка Telegram: найдено {retry_total}, отправлено {retry_sent}, ошибок {retry_failed}")
+        orders = get_orders(verbose)
+        log_info(f"Получено заказов: {len(orders)}")
+        result = process_orders_pg(orders, session, verbose=verbose)
+    if verbose:
+        print_stats(result)
+        print_source_stats(result)
+        print_matched_orders(result)
+        print_risky_orders(result)
+        print_rejected_orders(result)
+    else:
+        log_stats(result)
+        log_source_stats(result)
+    log_info("PostgreSQL проверка заказов завершена")
+
+
 def log_info(message):
     current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{current_time}] INFO: {message}")
@@ -355,8 +530,21 @@ def main():
                 log_error(str(error))
             log_info(f"Пауза {interval} секунд...")
             time.sleep(interval)
+    elif mode == "pg-watch":
+        while True:
+            try:
+                run_pg_once(verbose=False)
+            except Exception as error:
+                log_error(str(error))
+            log_info(f"Пауза {interval} секунд...")
+            time.sleep(interval)
+    elif mode == "pg-once":
+        try:
+            run_pg_once(verbose=True)
+        except Exception as error:
+            log_error(str(error))
     else:
-        log_error("Неизвестный режим. Используй: once или watch")
+        log_error("Неизвестный режим. Используй: once, watch, pg-once, pg-watch")
 
 
 if __name__ == "__main__":

@@ -1,9 +1,11 @@
 from typing import Literal
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Depends
 from pydantic import BaseModel
 
 import db
+import db_sqlalchemy
+from database import SessionLocal
 
 app = FastAPI()
 
@@ -125,11 +127,45 @@ def get_stats():
 
 
 @app.patch("/orders/{source}/{external_id}", response_model=OrderResponse)
-def update_order(source: str, external_id: str,
-                 update_data: OrderUpdateRequest):
-    updated = db.update_order_contacted(source, external_id,
-                                        update_data.contacted)
+def update_order(source: str, external_id: str, update_data: OrderUpdateRequest):
+    updated = db.update_order_contacted(source, external_id, update_data.contacted)
     if not updated:
         raise HTTPException(status_code=404, detail="Failed to update order")
     order = db.get_order_by_source_and_external_id(source, external_id)
     return order
+
+
+def get_db_session():
+    session = SessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()
+
+
+@app.get("/pg/orders/", response_model=OrdersListResponse)
+def pg_orders(limit: int = Query(20, ge=1, le=100),
+              status: Literal["matched", "risky", "rejected"] | None = None, session=Depends(get_db_session)):
+    orders = db_sqlalchemy.get_all_orders_as_dicts(session, status=status, limit=limit)
+
+    return {
+        "items": orders,
+        "count": len(orders),
+        "limit": limit,
+        "status": status,
+    }
+
+@app.get("/pg/orders/{source}/{external_id}", response_model=OrderResponse)
+def pg_get_order_detail(source: str, external_id: str, session=Depends(get_db_session)):
+    order = db_sqlalchemy.get_order_by_source_and_external_id_as_dict(session, source=source, external_id=external_id)
+    if order is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return order
+
+
+@app.patch("/pg/orders/{source}/{external_id}", response_model=OrderResponse)
+def pg_update_order(source: str, external_id: str, update_data: OrderUpdateRequest, session=Depends(get_db_session)):
+    updated = db_sqlalchemy.update_order_contacted_as_dict(session=session, source=source, external_id=external_id, contacted=update_data.contacted)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return updated
