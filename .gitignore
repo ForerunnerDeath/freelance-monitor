@@ -1,7 +1,14 @@
 .venv/
 __pycache__/
+.pytest_cache/
 *.pyc
 .env
 .vscode/
 *.db
 playwright_profiles/
+*.sqlite
+cookies.json
+storage_state.json
+*.zip
+*.rar
+*.7z
