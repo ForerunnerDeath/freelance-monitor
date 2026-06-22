@@ -137,11 +137,14 @@ async def fetch_orders_async(pages=1, verbose=True):
             fetch_page(client, semaphore, page, verbose=verbose)
             for page in range(1, pages + 1)
         ]
-        results = await asyncio.gather(*tasks)
-    
+        results = await asyncio.gather(*tasks, return_exceptions=True)
     all_orders = []
 
-    for page, page_orders in enumerate(results, start=1):
+    for page, page_result in enumerate(results, start=1):
+        if isinstance(page_result, Exception):
+            print("Ошибка обработки FL.ru page", page, ":", page_result)
+            continue
+        page_orders = page_result
         if verbose:
             print("Страница", page, ":", "получено", len(page_orders), "заказов")
         all_orders.extend(page_orders)
