@@ -1,4 +1,5 @@
-import requests
+import asyncio
+import httpx
 from bs4 import BeautifulSoup
 
 import config
@@ -42,20 +43,8 @@ def build_projects_url(page):
         return f"https://www.fl.ru/projects/page-{page}/"
 
 
-def fetch_page(page, verbose=True):
-    url = build_projects_url(page)
-    headers = {
-        "User-Agent": config.FL_RU_USER_AGENT
-    }
-    try:
-        response = requests.get(url, headers=headers, timeout=config.FL_RU_TIMEOUT)
-    except requests.exceptions.RequestException as error:
-        print("Сетевая ошибка:", error)
-        return []
-    if response.status_code != 200:
-        print("Ошибка HTTP FL.ru", response.status_code, url)
-        return []
-    soup = BeautifulSoup(response.text, "html.parser")
+def parse_page_html(html, page, verbose=True):
+    soup = BeautifulSoup(html, "html.parser")
     links = soup.find_all("a")
     seen_ids = set()
     orders = []
@@ -119,15 +108,49 @@ def fetch_page(page, verbose=True):
     return orders
 
 
-def fetch_orders(pages=1, verbose=True):
+async def fetch_page(client, semaphore, page, verbose=True):
+    url = build_projects_url(page)
+    headers = {
+        "User-Agent": config.FL_RU_USER_AGENT
+    }
+    async with semaphore:
+        try:
+            response = await client.get(
+                url,
+                headers=headers,
+                timeout=config.FL_RU_TIMEOUT,
+            )
+        except httpx.HTTPError as error:
+            print("Сетевая ошибка:", error)
+            return []
+    if response.status_code != 200:
+        print("Ошибка HTTP FL.ru", response.status_code, url)
+        return []
+    return parse_page_html(response.text, page, verbose=verbose)
+
+
+async def fetch_orders_async(pages=1, verbose=True):
+    semaphore = asyncio.Semaphore(config.FL_RU_CONCURRENCY_LIMIT)
+
+    async with httpx.AsyncClient() as client:
+        tasks = [
+            fetch_page(client, semaphore, page, verbose=verbose)
+            for page in range(1, pages + 1)
+        ]
+        results = await asyncio.gather(*tasks)
+    
     all_orders = []
 
-    for page in range(1, pages + 1):
-        page_orders = fetch_page(page, verbose=verbose)
+    for page, page_orders in enumerate(results, start=1):
         if verbose:
             print("Страница", page, ":", "получено", len(page_orders), "заказов")
         all_orders.extend(page_orders)
+
     return all_orders
+
+
+def fetch_orders(pages=1, verbose=True):
+    return asyncio.run(fetch_orders_async(pages=pages, verbose=verbose))
 
 
 if __name__ == "__main__":
