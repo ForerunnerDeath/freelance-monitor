@@ -1,4 +1,5 @@
 from playwright.sync_api import sync_playwright
+import config
 
 SOURCE_NAME = "profi_ru"
 BASE_ORDER_URL = "https://profi.ru/backoffice/n.php?o="
@@ -105,7 +106,7 @@ def fetch_orders(pages=1, verbose=True):
     with sync_playwright() as p:
         browser_context = p.chromium.launch_persistent_context(
             user_data_dir=USER_DATA_DIR,
-            headless=False,
+            headless=config.PROFI_RU_HEADLESS,
             viewport={"width": 1400, "height": 900}
         )
         page = browser_context.new_page()

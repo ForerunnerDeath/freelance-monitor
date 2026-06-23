@@ -60,6 +60,7 @@ services:
       <<: *app-environment
       ENABLE_FL_RU: "true"
       ENABLE_PROFI_RU: "false"
+      PROFI_RU_HEADLESS: "true"
     depends_on:
       - postgres
       - redis
