@@ -112,41 +112,51 @@ def process_orders(orders, session, verbose=True):
 
 def retry_unsent_telegram_orders(session):
     unsent_orders = db_sqlalchemy.get_unsent_telegram_orders_as_dicts(session)
+
     sent_count = 0
     failed_count = 0
+
     for saved_order in unsent_orders:
-        order = {
-            "source": saved_order.get("source", ""),
-            "external_id": saved_order.get("external_id", ""),
-            "title": saved_order.get("title", ""),
-            "url": saved_order.get("url", ""),
-            "description": saved_order.get("description", ""),
-            "budget": saved_order.get("budget", ""),
-            "tags": [],
-        }
-        check_result = {
-            "status": saved_order.get("status", ""),
-            "reason": saved_order.get("reason", ""),
-            "budget": saved_order.get("parsed_budget", ""),
-            "matched_keyword": saved_order.get("matched_keyword", ""),
-            "negative_keyword": saved_order.get("negative_keyword", ""),
-            "risky_keyword": saved_order.get("risky_keyword", ""),
-        }
-        telegram_sent = telegram_notify.notify_about_order(order, check_result)
-        if telegram_sent:
-            marked = db_sqlalchemy.mark_order_sent_to_telegram(
-                session,
-                saved_order.get("source", ""),
-                saved_order.get("external_id", ""),
-            )
-            if marked:
-                sent_count += 1
-            else:
-                failed_count += 1
-        else:
+        result = send_telegram_for_saved_order(
+            session,
+            saved_order.get("source", ""),
+            saved_order.get("external_id", ""),
+        )
+
+        if result["status"] == "sent":
+            sent_count += 1
+        elif result["status"] == "failed":
             failed_count += 1
+
     return {
         "total": len(unsent_orders),
         "sent": sent_count,
         "failed": failed_count,
     }
+
+
+def send_telegram_for_saved_order(session, source, external_id):
+    orm_order = db_sqlalchemy.get_order_by_source_and_external_id(session, source, external_id)
+    if orm_order is None:
+        return {"status": "not_found"}
+    if orm_order.sent_to_telegram is True:
+        return {"status": "already_sent"}
+    if orm_order.status not in {"matched", "risky"}:
+        return {"status": "not_sendable"}
+    order = db_sqlalchemy.order_to_dict(orm_order)
+    check_result = {
+        "status": order.get("status", ""),
+        "reason": order.get("reason", ""),
+        "budget": order.get("parsed_budget"),
+        "matched_keyword": order.get("matched_keyword"),
+        "negative_keyword": order.get("negative_keyword"),
+        "risky_keyword": order.get("risky_keyword"),
+    }
+    tg_notify = telegram_notify.notify_about_order(order, check_result)
+    if not tg_notify:
+        return {"status": "failed", "reason": "telegram_send_failed"}
+    db_notify = db_sqlalchemy.mark_order_sent_to_telegram(session, source, external_id)
+    if db_notify:
+        return {"status": "sent"}
+    else:
+        return {"status": "failed", "reason": "mark_sent_failed"}
