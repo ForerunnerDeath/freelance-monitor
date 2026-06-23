@@ -1,3 +1,12 @@
+x-app-environment: &app-environment
+  DB_HOST: postgres
+  DB_PORT: 5432
+  DB_USER: freelance_monitor
+  DB_PASSWORD: freelance_monitor_password
+  DB_NAME: freelance_monitor
+  REDIS_HOST: redis
+  REDIS_PORT: 6379
+
 services:
   postgres:
     image: postgres:18-alpine
@@ -24,13 +33,7 @@ services:
     build: .
     container_name: freelance_monitor_app
     environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: freelance_monitor
-      DB_PASSWORD: freelance_monitor_password
-      DB_NAME: freelance_monitor
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
+      <<: *app-environment
     depends_on:
       - postgres
       - redis
@@ -49,13 +52,7 @@ services:
     env_file:
       - .env
     environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: freelance_monitor
-      DB_PASSWORD: freelance_monitor_password
-      DB_NAME: freelance_monitor
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
+      <<: *app-environment
     depends_on:
       - postgres
       - redis
@@ -65,13 +62,7 @@ services:
     build: .
     container_name: freelance_monitor_api
     environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: freelance_monitor
-      DB_PASSWORD: freelance_monitor_password
-      DB_NAME: freelance_monitor
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
+      <<: *app-environment
     depends_on:
       - postgres
       - redis
@@ -83,15 +74,9 @@ services:
     build: .
     container_name: freelance_monitor_monitor
     environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: freelance_monitor
-      DB_PASSWORD: freelance_monitor_password
-      DB_NAME: freelance_monitor
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      ENABLE_FL_RU: true
-      ENABLE_PROFI_RU: false
+      <<: *app-environment
+      ENABLE_FL_RU: "true"
+      ENABLE_PROFI_RU: "false"
     depends_on:
       - postgres
       - redis
