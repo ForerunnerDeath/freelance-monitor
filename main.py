@@ -3,7 +3,7 @@ import time
 from database import SessionLocal
 
 import config
-from services.order_service import process_orders, retry_unsent_telegram_orders
+from services.order_service import process_orders
 from cli_output import print_source_stats, print_stats, print_matched_orders, print_rejected_orders, print_risky_orders
 from logger import log_info, log_error
 from services.source_service import get_orders
@@ -17,8 +17,9 @@ def log_stats(result):
     risky_count = result.get("risky", "")
     telegram_sent_count = result.get("telegram_sent")
     telegram_failed_count = result.get("telegram_failed")
+    telegram_queued_count = result.get("telegram_queued")
 
-    log_info(f"Статистика: всего {total_count}, дублей {duplicate_count}, подходящих {matched_count}, неподходящих {rejected_count}, рискованных {risky_count}, отправлено в TG {telegram_sent_count}, ошибок отправки в TG {telegram_failed_count}")
+    log_info(f"Статистика: всего {total_count}, дублей {duplicate_count}, подходящих {matched_count}, неподходящих {rejected_count}, рискованных {risky_count}, отправлено в TG {telegram_sent_count}, поставлено в очередь TG {telegram_queued_count}, ошибок отправки в TG {telegram_failed_count}")
 
 
 def log_source_stats(result):
@@ -31,18 +32,13 @@ def log_source_stats(result):
         rejected = stats.get("rejected", 0)
         telegram_sent = stats.get("telegram_sent", 0)
         telegram_failed = stats.get("telegram_failed", 0)
-        log_info(f"Источники: {source}, всего {total_count}, дублей {duplicates}, подходящих {matched}, неподходящих {rejected}, рискованных {risky}, отправлено в TG {telegram_sent}, ошибок отправки в TG {telegram_failed}")
+        telegram_queued = stats.get("telegram_queued", 0)
+        log_info(f"Источники: {source}, всего {total_count}, дублей {duplicates}, подходящих {matched}, неподходящих {rejected}, рискованных {risky}, отправлено в TG {telegram_sent}, поставлено в очередь TG {telegram_queued}, ошибок отправки в TG {telegram_failed}")
 
 
 def run_once(verbose=True):
     log_info("Старт проверки заказов")
     with SessionLocal() as session:
-        retry_result = retry_unsent_telegram_orders(session)
-        retry_total = retry_result["total"]
-        retry_sent = retry_result["sent"]
-        retry_failed = retry_result["failed"]
-        if retry_total > 0:
-            log_info(f"Повторная отправка Telegram: найдено {retry_total}, отправлено {retry_sent}, ошибок {retry_failed}")
         orders = get_orders(verbose)
         log_info(f"Получено заказов: {len(orders)}")
         result = process_orders(orders, session, verbose=verbose)
