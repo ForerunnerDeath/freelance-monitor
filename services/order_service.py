@@ -134,6 +134,28 @@ def retry_unsent_telegram_orders(session):
     }
 
 
+def requeue_unsent_telegram_orders(session):
+    queued_count = 0
+    failed_count = 0
+    unsent_orders = db_sqlalchemy.get_unsent_telegram_orders_as_dicts(session)
+    for order in unsent_orders:
+        source = order.get("source", "")
+        external_id = order.get("external_id", "")
+        try:
+            queue_result = enqueue_telegram_notification(source, external_id)
+            if queue_result["status"] == "queued":
+                queued_count += 1
+            else:
+                failed_count += 1
+        except Exception:
+            failed_count += 1
+    return {
+        "total": len(unsent_orders),
+        "queued": queued_count,
+        "failed": failed_count,
+    }
+
+
 def send_telegram_for_saved_order(session, source, external_id):
     orm_order = db_sqlalchemy.get_order_by_source_and_external_id(session, source, external_id)
     if orm_order is None:
