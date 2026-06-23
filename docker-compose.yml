@@ -20,6 +20,55 @@ services:
       - redis_data:/data
     command: redis-server --appendonly yes
 
+  app:
+    build: .
+    container_name: freelance_monitor_app
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: freelance_monitor
+      DB_PASSWORD: freelance_monitor_password
+      DB_NAME: freelance_monitor
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      - postgres
+      - redis
+    command: >
+      python -c "from sqlalchemy import text; from database import engine;
+      import redis, config;
+      conn = engine.connect();
+      print(conn.execute(text('select 1')).scalar());
+      conn.close();
+      r = redis.Redis(host=config.REDIS_HOST, port=config.REDIS_PORT, decode_responses=True);
+      print(r.ping())"
+    
+  worker:
+    build: .
+    container_name: freelance_monitor_worker
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: freelance_monitor
+      DB_PASSWORD: freelance_monitor_password
+      DB_NAME: freelance_monitor
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      - postgres
+      - redis
+    command: >
+      python -c "import workers.telegram_worker;
+      from sqlalchemy import text;
+      from database import engine;
+      import redis, config;
+      conn = engine.connect();
+      print(conn.execute(text('select 1')).scalar());
+      conn.close();
+      r = redis.Redis(host=config.REDIS_HOST, port=config.REDIS_PORT, decode_responses=True);
+      print(r.ping());
+      print('worker imports and connections ok')"
+
 volumes:
   postgres_data:
   redis_data:
