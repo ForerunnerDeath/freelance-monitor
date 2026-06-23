@@ -82,16 +82,11 @@ def process_orders(orders, session, verbose=True):
         db_sqlalchemy.save_order(session, order, check_result, sent_to_telegram=False)
 
         if status in ("matched", "risky"):
-            telegram_sent = telegram_notify.notify_about_order(order, check_result)
-            if telegram_sent:
-                marked = db_sqlalchemy.mark_order_sent_to_telegram(session, source, external_id)
-                if marked:
-                    telegram_sent_count += 1
-                    source_stats[source]["telegram_sent"] += 1
-                else:
-                    telegram_failed_count += 1
-                    source_stats[source]["telegram_failed"] += 1
-            else:
+            telegram_result = send_telegram_for_saved_order(session, source, external_id)
+            if telegram_result["status"] == "sent":
+                telegram_sent_count += 1
+                source_stats[source]["telegram_sent"] += 1
+            elif telegram_result["status"] == "failed":
                 telegram_failed_count += 1
                 source_stats[source]["telegram_failed"] += 1
 
