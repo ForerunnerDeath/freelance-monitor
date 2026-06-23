@@ -68,6 +68,24 @@ services:
       r = redis.Redis(host=config.REDIS_HOST, port=config.REDIS_PORT, decode_responses=True);
       print(r.ping());
       print('worker imports and connections ok')"
+  
+  api:
+    build: .
+    container_name: freelance_monitor_api
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: freelance_monitor
+      DB_PASSWORD: freelance_monitor_password
+      DB_NAME: freelance_monitor
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      - postgres
+      - redis
+    ports:
+      - "127.0.0.1:8000:8000"
+    command: uvicorn api:app --host 0.0.0.0 --port 8000
 
 volumes:
   postgres_data:
