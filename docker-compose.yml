@@ -57,17 +57,7 @@ services:
     depends_on:
       - postgres
       - redis
-    command: >
-      python -c "import workers.telegram_worker;
-      from sqlalchemy import text;
-      from database import engine;
-      import redis, config;
-      conn = engine.connect();
-      print(conn.execute(text('select 1')).scalar());
-      conn.close();
-      r = redis.Redis(host=config.REDIS_HOST, port=config.REDIS_PORT, decode_responses=True);
-      print(r.ping());
-      print('worker imports and connections ok')"
+    command: python -m workers.telegram_worker
   
   api:
     build: .
