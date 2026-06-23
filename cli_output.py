@@ -12,6 +12,7 @@ def print_source_stats(result):
         print("Рискованных:", stats.get("risky", 0))
         print("Неподходящих:", stats.get("rejected", 0))
         print("Отправлено в Telegram:", stats.get("telegram_sent", 0))
+        print("Поставлено в очередь Telegram:", stats.get("telegram_queued", 0))
         print("Ошибок Telegram:", stats.get("telegram_failed", 0))
 
 
@@ -23,6 +24,7 @@ def print_stats(result):
     risky_count = result.get("risky", "")
     telegram_sent_count = result.get("telegram_sent", "")
     telegram_failed_count = result.get("telegram_failed", "")
+    telegram_queued_count = result.get("telegram_queued", "")
     print("-----")
     print("Статистика:")
     print("Всего заказов:", total_count)
@@ -30,6 +32,7 @@ def print_stats(result):
     print("Подходящих:", matched_count)
     print("Неподходящих:", rejected_count)
     print("Рискованных:", risky_count)
+    print("Поставлено в очередь Telegram:", telegram_queued_count)
     print("Отправлено в Telegram:", telegram_sent_count)
     print("Ошибка отправления в Telegram:", telegram_failed_count)
 

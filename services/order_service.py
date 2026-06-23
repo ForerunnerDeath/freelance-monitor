@@ -1,6 +1,7 @@
 import db_sqlalchemy
 import filters
 import telegram_notify
+from queues.telegram_queue import enqueue_telegram_notification
 
 
 def process_orders(orders, session, verbose=True):
@@ -12,6 +13,7 @@ def process_orders(orders, session, verbose=True):
     risky_count = 0
     telegram_sent_count = 0
     telegram_failed_count = 0
+    telegram_queued_count = 0
 
     matched_orders = []
     rejected_orders = []
@@ -31,6 +33,7 @@ def process_orders(orders, session, verbose=True):
                 "rejected": 0,
                 "telegram_sent": 0,
                 "telegram_failed": 0,
+                "telegram_queued": 0,
             }
         source_stats[source]["total"] += 1
 
@@ -82,11 +85,11 @@ def process_orders(orders, session, verbose=True):
         db_sqlalchemy.save_order(session, order, check_result, sent_to_telegram=False)
 
         if status in ("matched", "risky"):
-            telegram_result = send_telegram_for_saved_order(session, source, external_id)
-            if telegram_result["status"] == "sent":
-                telegram_sent_count += 1
-                source_stats[source]["telegram_sent"] += 1
-            elif telegram_result["status"] == "failed":
+            queue_result = enqueue_telegram_notification(source, external_id)
+            if queue_result["status"] == "queued":
+                telegram_queued_count += 1
+                source_stats[source]["telegram_queued"] += 1
+            else:
                 telegram_failed_count += 1
                 source_stats[source]["telegram_failed"] += 1
 
@@ -101,6 +104,7 @@ def process_orders(orders, session, verbose=True):
         "risky_orders": risky_orders,
         "telegram_sent": telegram_sent_count,
         "telegram_failed": telegram_failed_count,
+        "telegram_queued": telegram_queued_count,
         "source_stats": source_stats,
     }
 
