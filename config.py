@@ -1,3 +1,9 @@
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
 ENABLE_FL_RU = True
 ENABLE_PROFI_RU = True
 FL_RU_PAGES = 3
@@ -9,8 +15,8 @@ FL_RU_USER_AGENT = "Mozilla/5.0"
 FL_RU_MIN_ORDERS_PER_PAGE = 20
 PROFI_RU_PAGES = 3
 FL_RU_CONCURRENCY_LIMIT = 2
-REDIS_HOST = "127.0.0.1"
-REDIS_PORT = "6379"
+REDIS_HOST = os.getenv("REDIS_HOST", "127.0.0.1")
+REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 TELEGRAM_QUEUE_NAME = "queue:telegram"
 TELEGRAM_FAILED_QUEUE_NAME = "queue:telegram:failed"
 TELEGRAM_DELAYED_QUEUE_NAME = "queue:telegram:delayed"
