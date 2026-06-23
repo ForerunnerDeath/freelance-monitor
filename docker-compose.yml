@@ -59,13 +59,18 @@ services:
     environment:
       <<: *app-environment
       ENABLE_FL_RU: "true"
-      ENABLE_PROFI_RU: "false"
+      ENABLE_PROFI_RU: "true"
       PROFI_RU_HEADLESS: "true"
+      PROFI_RU_STORAGE_STATE: /app/playwright_auth/profi_storage_state.json
     depends_on:
       - postgres
       - redis
+    volumes:
+      - playwright_profiles:/app/playwright_profiles
+      - ./playwright_auth:/app/playwright_auth:ro
     command: python main.py watch
 
 volumes:
   postgres_data:
   redis_data:
+  playwright_profiles:

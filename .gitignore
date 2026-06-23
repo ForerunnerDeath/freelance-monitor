@@ -12,3 +12,4 @@ storage_state.json
 *.zip
 *.rar
 *.7z
+playwright_auth/

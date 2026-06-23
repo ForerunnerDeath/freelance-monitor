@@ -32,6 +32,10 @@ FL_RU_USER_AGENT = "Mozilla/5.0"
 FL_RU_MIN_ORDERS_PER_PAGE = 20
 PROFI_RU_PAGES = 3
 PROFI_RU_HEADLESS = get_bool_env("PROFI_RU_HEADLESS", False)
+PROFI_RU_STORAGE_STATE = os.getenv(
+    "PROFI_RU_STORAGE_STATE",
+    "playwright_auth/profi_storage_state.json",
+)
 FL_RU_CONCURRENCY_LIMIT = 2
 REDIS_HOST = os.getenv("REDIS_HOST", "127.0.0.1")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))

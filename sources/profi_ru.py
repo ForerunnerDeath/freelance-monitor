@@ -1,10 +1,10 @@
 from playwright.sync_api import sync_playwright
+from pathlib import Path
 import config
 
 SOURCE_NAME = "profi_ru"
 BASE_ORDER_URL = "https://profi.ru/backoffice/n.php?o="
 PROFI_URL = "https://profi.ru/backoffice/n.php"
-USER_DATA_DIR = "playwright_profiles/profi"
 PLAYWRIGHT_WAIT_MS = 5000
 
 
@@ -104,11 +104,18 @@ def fetch_orders(pages=1, verbose=True):
             print("Новых заказов в этом ответе:", new_orders_count)
             print("Всего найдено заказов:", len(found_orders))
     with sync_playwright() as p:
-        browser_context = p.chromium.launch_persistent_context(
-            user_data_dir=USER_DATA_DIR,
+        storage_state_path = Path(config.PROFI_RU_STORAGE_STATE)
+        browser = p.chromium.launch(
             headless=config.PROFI_RU_HEADLESS,
-            viewport={"width": 1400, "height": 900}
         )
+        context_kwargs = {
+            "viewport": {"width": 1400, "height": 900},
+        }
+        if storage_state_path.exists():
+            context_kwargs["storage_state"] = str(storage_state_path)
+        elif verbose:
+            print("Profi.ru storage_state file not found:", storage_state_path)
+        browser_context = browser.new_context(**context_kwargs)
         page = browser_context.new_page()
         page.on("response", handle_response)
         page.goto(PROFI_URL, wait_until="domcontentloaded")
@@ -119,7 +126,7 @@ def fetch_orders(pages=1, verbose=True):
             page.mouse.wheel(0, 3000)
             page.wait_for_timeout(2000)
         browser_context.close()
-
+        browser.close()
     return found_orders
 
 
