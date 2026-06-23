@@ -1,0 +1,223 @@
+# freelance-monitor
+
+`freelance-monitor` - практический Python Backend/Automation проект для мониторинга заказов с фриланс-площадок.
+
+Проект собирает заказы из источников, фильтрует их по степени интересности, сохраняет в PostgreSQL, отправляет подходящие заказы в Telegram через Redis-очередь и предоставляет FastAPI API для просмотра заказов и статистики.
+
+## Возможности
+
+- Парсинг заказов с FL.ru.
+- Авторизованный источник Profi.ru через Playwright и сохранённый `storage_state`.
+- Фильтрация заказов по статусам:
+  - `matched` - подходящие заказы;
+  - `risky` - потенциально интересные заказы, требующие ручной проверки;
+  - `rejected` - неподходящие заказы.
+- Сохранение заказов в PostgreSQL через SQLAlchemy ORM.
+- Защита от дублей через `UNIQUE(source, external_id)`.
+- Очередь Telegram-уведомлений через Redis.
+- Отдельный Telegram worker с retry/backoff и failed queue.
+- FastAPI API для заказов и статистики.
+- Docker Compose запуск всей системы: PostgreSQL, Redis, API, worker и monitor.
+- Pytest-тесты для фильтров и API.
+
+## Архитектура
+
+Основной pipeline:
+
+```text
+FL.ru / Profi.ru
+        |
+        v
+     monitor
+        |
+        v
+   PostgreSQL
+        |
+        v
+   Redis queue
+        |
+        v
+ Telegram worker
+        |
+        v
+     Telegram
+```
+
+Параллельно работает API:
+
+```text
+FastAPI API -> PostgreSQL -> /health, /stats, /orders
+```
+
+## Сервисы Docker Compose
+
+| Сервис | Назначение |
+| --- | --- |
+| `postgres` | PostgreSQL база данных для заказов и миграций Alembic |
+| `redis` | Redis broker для очередей Telegram-задач |
+| `api` | FastAPI приложение |
+| `worker` | Telegram worker, который читает Redis queue и отправляет уведомления |
+| `monitor` | Процесс мониторинга, который парсит источники и создаёт задачи в очереди |
+
+## Стек
+
+- Python 3.14
+- FastAPI
+- SQLAlchemy
+- Alembic
+- PostgreSQL
+- Redis
+- Playwright
+- httpx
+- BeautifulSoup
+- pytest
+- Docker / Docker Compose
+
+## Быстрый запуск через Docker Compose
+
+### 1. Склонировать репозиторий
+
+```powershell
+git clone <repository-url>
+cd freelance-monitor
+```
+
+### 2. Создать `.env`
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Заполните в `.env` реальные Telegram-значения:
+
+```env
+TELEGRAM_BOT_TOKEN=...
+TELEGRAM_CHAT_ID=...
+```
+
+Не коммитьте реальный `.env` в Git.
+
+### 3. Запустить PostgreSQL и Redis
+
+```powershell
+docker compose up -d postgres redis
+```
+
+### 4. Применить миграции Alembic
+
+```powershell
+docker compose run --rm api alembic upgrade head
+```
+
+### 5. Запустить сервисы приложения
+
+```powershell
+docker compose up -d api worker monitor
+```
+
+### 6. Проверить API
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/health
+Invoke-RestMethod http://127.0.0.1:8000/stats
+```
+
+Документация FastAPI доступна по адресу:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+## Авторизация Profi.ru
+
+Источник Profi.ru требует ручной авторизации через браузер.
+
+Локально выполните:
+
+```powershell
+python -m scripts.profi_login
+```
+
+После успешного входа скрипт создаст файл:
+
+```text
+playwright_auth/profi_storage_state.json
+```
+
+Этот файл содержит cookies/localStorage и не должен попадать в Git.
+
+В `.env.example` источник Profi.ru по умолчанию отключён:
+
+```env
+ENABLE_PROFI_RU=false
+```
+
+Чтобы включить Profi.ru:
+
+1. Создайте `playwright_auth/profi_storage_state.json`.
+2. Убедитесь, что файл доступен Docker Compose через bind mount.
+3. Включите источник в `.env`:
+
+```env
+ENABLE_PROFI_RU=true
+```
+
+## Полезные команды
+
+### Запуск тестов
+
+```powershell
+python -m pytest
+```
+
+### Проверить статус контейнеров
+
+```powershell
+docker compose ps
+```
+
+### Посмотреть логи monitor
+
+```powershell
+docker compose logs -f monitor
+```
+
+### Посмотреть логи worker
+
+```powershell
+docker compose logs worker --tail=100
+```
+
+### Проверить очереди Redis
+
+```powershell
+docker compose exec -T redis redis-cli LLEN queue:telegram
+docker compose exec -T redis redis-cli ZCARD queue:telegram:delayed
+docker compose exec -T redis redis-cli LLEN queue:telegram:failed
+```
+
+### Проверить таблицы PostgreSQL
+
+```powershell
+docker compose exec -T postgres psql -U freelance_monitor -d freelance_monitor -c "\dt"
+```
+
+### Применить миграции вручную
+
+```powershell
+docker compose run --rm api alembic upgrade head
+```
+
+## Статус проекта
+
+Это pet-project / portfolio project.
+
+Цель проекта - прокачать практические навыки Python Backend и Automation на реалистичной задаче:
+
+- парсинг и внешние интеграции;
+- SQL и ORM;
+- FastAPI и REST;
+- Redis queues и worker-процессы;
+- Docker Compose инфраструктура;
+- тестирование и диагностика;
+- подготовка проекта к GitHub и портфолио.
