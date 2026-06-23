@@ -19,6 +19,13 @@ services:
       - "127.0.0.1:5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U freelance_monitor -d freelance_monitor"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
 
   redis:
     image: redis:8-alpine
@@ -28,6 +35,13 @@ services:
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
     
   worker:
     build: .
@@ -37,9 +51,12 @@ services:
     environment:
       <<: *app-environment
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     command: python -m workers.telegram_worker
+    restart: unless-stopped
   
   api:
     build: .
@@ -47,11 +64,24 @@ services:
     environment:
       <<: *app-environment
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     ports:
       - "127.0.0.1:8000:8000"
     command: uvicorn api:app --host 0.0.0.0 --port 8000
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)\""
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
   
   monitor:
     build: .
@@ -63,12 +93,15 @@ services:
       PROFI_RU_HEADLESS: "true"
       PROFI_RU_STORAGE_STATE: /app/playwright_auth/profi_storage_state.json
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
       - playwright_profiles:/app/playwright_profiles
       - ./playwright_auth:/app/playwright_auth:ro
     command: python main.py watch
+    restart: unless-stopped
 
 volumes:
   postgres_data:
