@@ -42,7 +42,7 @@ services:
       retries: 5
       start_period: 5s
     restart: unless-stopped
-    
+
   worker:
     build: .
     container_name: freelance_monitor_worker
@@ -57,7 +57,7 @@ services:
         condition: service_healthy
     command: python -m workers.telegram_worker
     restart: unless-stopped
-  
+
   api:
     build: .
     container_name: freelance_monitor_api
@@ -82,7 +82,7 @@ services:
       retries: 5
       start_period: 10s
     restart: unless-stopped
-  
+
   monitor:
     build: .
     container_name: freelance_monitor_monitor
@@ -91,6 +91,8 @@ services:
       ENABLE_FL_RU: "true"
       ENABLE_PROFI_RU: "true"
       PROFI_RU_HEADLESS: "true"
+      PROFI_RU_AUTH_MODE: persistent_profile
+      PROFI_RU_PROFILE_DIR: /app/playwright_profiles/profi_ru
       PROFI_RU_STORAGE_STATE: /app/playwright_auth/profi_storage_state.json
     depends_on:
       postgres:
@@ -102,6 +104,28 @@ services:
       - ./playwright_auth:/app/playwright_auth:ro
     command: python main.py watch
     restart: unless-stopped
+
+  profi-login:
+    build:
+      context: .
+      dockerfile: Dockerfile.profi-login
+    container_name: freelance_monitor_profi_login
+    env_file:
+      - .env
+    environment:
+      <<: *app-environment
+      ENABLE_FL_RU: "false"
+      ENABLE_PROFI_RU: "true"
+      PROFI_RU_HEADLESS: "false"
+      PROFI_RU_AUTH_MODE: persistent_profile
+      PROFI_RU_PROFILE_DIR: /app/playwright_profiles/profi_ru
+    ports:
+      - "127.0.0.1:6080:6080"
+    volumes:
+      - playwright_profiles:/app/playwright_profiles
+    stdin_open: true
+    tty: true
+    command: bash scripts/start_profi_login_vnc.sh
 
 volumes:
   postgres_data:
