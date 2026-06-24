@@ -49,6 +49,27 @@ FL.ru / Profi.ru
 FastAPI API -> PostgreSQL -> /health, /stats, /orders
 ```
 
+## API endpoints
+
+FastAPI API используется для диагностики сервиса, просмотра заказов и работы со статусами.
+
+| Method | Endpoint | Назначение |
+| --- | --- | --- |
+| `GET` | `/health` | Проверить, что API работает |
+| `GET` | `/stats` | Получить статистику по заказам |
+| `GET` | `/orders` | Получить список заказов |
+| `GET` | `/orders?status=matched` | Получить заказы с фильтром по статусу |
+| `GET` | `/orders/{source}/{external_id}` | Получить конкретный заказ по источнику и внешнему ID |
+| `PATCH` | `/orders/{source}/{external_id}` | Обновить поля заказа, например `contacted` |
+
+В API используется REST-подход: `GET` для чтения данных, `PATCH` для частичного обновления заказа, query params для фильтрации списка и path params для обращения к конкретному заказу.
+
+Подробная интерактивная документация доступна после запуска проекта:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
 ## Сервисы Docker Compose
 
 | Сервис | Назначение |
@@ -95,8 +116,6 @@ TELEGRAM_BOT_TOKEN=...
 TELEGRAM_CHAT_ID=...
 ```
 
-Не коммитьте реальный `.env` в Git.
-
 ### 3. Запустить PostgreSQL и Redis
 
 ```powershell
@@ -120,12 +139,6 @@ docker compose up -d api worker monitor
 ```powershell
 Invoke-RestMethod http://127.0.0.1:8000/health
 Invoke-RestMethod http://127.0.0.1:8000/stats
-```
-
-Документация FastAPI доступна по адресу:
-
-```text
-http://127.0.0.1:8000/docs
 ```
 
 ## Авторизация Profi.ru
@@ -210,7 +223,7 @@ docker compose run --rm api alembic upgrade head
 
 ## Статус проекта
 
-Это pet-project / portfolio project.
+Это pet-project/portfolio project.
 
 Цель проекта - прокачать практические навыки Python Backend и Automation на реалистичной задаче:
 
