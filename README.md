@@ -102,7 +102,7 @@ http://127.0.0.1:8000/docs
 ### 1. Склонировать репозиторий
 
 ```powershell
-git clone <repository-url>
+git clone [<repository-url>](https://github.com/ForerunnerDeath/freelance-monitor.git)
 cd freelance-monitor
 ```
 
