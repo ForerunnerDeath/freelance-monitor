@@ -1,6 +1,7 @@
-from models import Order
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
+
+from models import Order
 
 
 def save_order(session, order_data, check_result, sent_to_telegram=False):

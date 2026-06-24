@@ -1,5 +1,7 @@
 import json
+
 import redis
+
 import config
 
 connect = redis.Redis(

@@ -1,5 +1,7 @@
-from playwright.sync_api import sync_playwright
 from pathlib import Path
+
+from playwright.sync_api import sync_playwright
+
 import config
 
 SOURCE_NAME = "profi_ru"

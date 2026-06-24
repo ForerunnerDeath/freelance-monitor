@@ -1,10 +1,10 @@
-import time
 import json
+import time
+
 import redis
+
 import config
-
 from tasks.telegram_tasks import send_telegram_for_order_task
-
 
 connect = redis.Redis(
     host=config.REDIS_HOST,
@@ -21,7 +21,6 @@ def process_task(task_json):
 
     if task_name == "send_telegram_for_order":
         return send_telegram_for_order_task(**payload)
-    
     raise ValueError(f"Unknown task: {task_name}")
 
 

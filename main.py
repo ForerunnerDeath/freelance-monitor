@@ -1,11 +1,12 @@
 import sys
 import time
-from database import SessionLocal
 
 import config
+from cli_output import (print_matched_orders, print_rejected_orders,
+                        print_risky_orders, print_source_stats, print_stats)
+from database import SessionLocal
+from logger import log_error, log_info
 from services.order_service import process_orders
-from cli_output import print_source_stats, print_stats, print_matched_orders, print_rejected_orders, print_risky_orders
-from logger import log_info, log_error
 from services.source_service import get_orders
 
 
@@ -19,7 +20,13 @@ def log_stats(result):
     telegram_failed_count = result.get("telegram_failed")
     telegram_queued_count = result.get("telegram_queued")
 
-    log_info(f"Статистика: всего {total_count}, дублей {duplicate_count}, подходящих {matched_count}, неподходящих {rejected_count}, рискованных {risky_count}, отправлено в TG {telegram_sent_count}, поставлено в очередь TG {telegram_queued_count}, ошибок отправки в TG {telegram_failed_count}")
+    log_info(
+        f"Статистика: всего {total_count}, дублей {duplicate_count}, "
+        f"подходящих {matched_count}, неподходящих {rejected_count}, "
+        f"рискованных {risky_count}, отправлено в TG {telegram_sent_count}, "
+        f"поставлено в очередь TG {telegram_queued_count}, "
+        f"ошибок отправки в TG {telegram_failed_count}"
+    )
 
 
 def log_source_stats(result):
@@ -33,7 +40,13 @@ def log_source_stats(result):
         telegram_sent = stats.get("telegram_sent", 0)
         telegram_failed = stats.get("telegram_failed", 0)
         telegram_queued = stats.get("telegram_queued", 0)
-        log_info(f"Источники: {source}, всего {total_count}, дублей {duplicates}, подходящих {matched}, неподходящих {rejected}, рискованных {risky}, отправлено в TG {telegram_sent}, поставлено в очередь TG {telegram_queued}, ошибок отправки в TG {telegram_failed}")
+        log_info(
+            f"Источники: {source}, всего {total_count}, дублей {duplicates}, "
+            f"подходящих {matched}, неподходящих {rejected}, "
+            f"рискованных {risky}, отправлено в TG {telegram_sent}, "
+            f"поставлено в очередь TG {telegram_queued}, "
+            f"ошибок отправки в TG {telegram_failed}"
+        )
 
 
 def run_once(verbose=True):

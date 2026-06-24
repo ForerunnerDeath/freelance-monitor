@@ -1,10 +1,11 @@
 from typing import Literal
 
-from fastapi import FastAPI, HTTPException, Query, Depends
+from fastapi import Depends, FastAPI, HTTPException, Query
 
 import db_sqlalchemy
-from schemas import OrderResponse, OrdersListResponse, StatsResponse, OrderUpdateRequest
 from dependencies import get_db_session
+from schemas import (OrderResponse, OrdersListResponse, OrderUpdateRequest,
+                     StatsResponse)
 
 app = FastAPI()
 

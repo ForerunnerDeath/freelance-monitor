@@ -1,6 +1,6 @@
 import config
-from sources import fl_ru, profi_ru
 from logger import log_error
+from sources import fl_ru, profi_ru
 
 
 def get_orders(verbose):

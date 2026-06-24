@@ -1,5 +1,7 @@
 import datetime
-from sqlalchemy import Boolean, Integer, String, UniqueConstraint, DateTime, Text, false, text
+
+from sqlalchemy import (Boolean, DateTime, Integer, String, Text,
+                        UniqueConstraint, false, text)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
