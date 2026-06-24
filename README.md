@@ -1,5 +1,7 @@
 # freelance-monitor
 
+![Tests](https://github.com/ForerunnerDeath/freelance-monitor/actions/workflows/tests.yml/badge.svg)
+
 `freelance-monitor` - практический Python Backend/Automation проект для мониторинга заказов с фриланс-площадок.
 
 Проект собирает заказы из источников, фильтрует их по степени интересности, сохраняет в PostgreSQL, отправляет подходящие заказы в Telegram через Redis-очередь и предоставляет FastAPI API для просмотра заказов и статистики.
