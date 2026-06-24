@@ -7,7 +7,7 @@
 ## Возможности
 
 - Парсинг заказов с FL.ru.
-- Авторизованный источник Profi.ru через Playwright и сохранённый `storage_state`.
+- Авторизованный источник Profi.ru через Playwright, Docker/VNC login flow и persistent browser profile.
 - Фильтрация заказов по статусам:
   - `matched` - подходящие заказы;
   - `risky` - потенциально интересные заказы, требующие ручной проверки;
@@ -79,6 +79,7 @@ http://127.0.0.1:8000/docs
 | `api` | FastAPI приложение |
 | `worker` | Telegram worker, который читает Redis queue и отправляет уведомления |
 | `monitor` | Процесс мониторинга, который парсит источники и создаёт задачи в очереди |
+| `profi-login` | Вспомогательный сервис для ручной авторизации Profi.ru через браузер в Docker/VNC |
 
 ## Стек
 
@@ -143,33 +144,56 @@ Invoke-RestMethod http://127.0.0.1:8000/stats
 
 ## Авторизация Profi.ru
 
-Источник Profi.ru требует ручной авторизации через браузер.
+Источник Profi.ru требует ручной авторизации, потому что заказы доступны только после входа в аккаунт.
 
-Локально выполните:
+Для этого в проекте есть отдельный Docker/VNC login flow:
+
+* `Dockerfile.profi-login` - отдельный Dockerfile для контейнера авторизации;
+* `scripts/profi_login_vnc.py` - скрипт запуска браузера для ручного входа;
+* `scripts/start_profi_login_vnc.sh` - стартовый скрипт VNC/noVNC окружения;
+* `profi-login` service в `docker-compose.yml`.
+
+### Как пройти авторизацию
+
+Запустите сервис авторизации:
 
 ```powershell
-python -m scripts.profi_login
+docker compose up -d profi-login
 ```
 
-После успешного входа скрипт создаст файл:
+После запуска откройте noVNC в браузере:
 
 ```text
-playwright_auth/profi_storage_state.json
+http://127.0.0.1:6080
 ```
 
-Этот файл содержит cookies/localStorage и не должен попадать в Git.
+В открывшемся браузере вручную войдите в Profi.ru.
 
-В `.env.example` источник Profi.ru по умолчанию отключён:
+После успешной авторизации профиль браузера сохраняется в persistent profile directory, который используется `monitor` для последующего парсинга Profi.ru уже в headless-режиме.
+
+### Проверка Profi.ru после авторизации
+
+После входа можно проверить источник отдельно:
+
+```powershell
+docker compose run --rm monitor python -m sources.profi_ru
+```
+
+Или проверить общий сбор заказов:
+
+```powershell
+docker compose exec monitor python -c "from services.source_service import get_orders; orders = get_orders(verbose=True); print('TOTAL', len(orders)); print('SOURCES', sorted(set(o.get('source') for o in orders))); print({s: sum(1 for o in orders if o.get('source') == s) for s in set(o.get('source') for o in orders)})"
+```
+
+### Важные замечания
+
+В `.env.example` источник Profi.ru может быть отключён по умолчанию:
 
 ```env
 ENABLE_PROFI_RU=false
 ```
 
-Чтобы включить Profi.ru:
-
-1. Создайте `playwright_auth/profi_storage_state.json`.
-2. Убедитесь, что файл доступен Docker Compose через bind mount.
-3. Включите источник в `.env`:
+Чтобы включить Profi.ru после авторизации, укажите в `.env`:
 
 ```env
 ENABLE_PROFI_RU=true
